@@ -1,60 +1,81 @@
-# 🚀 PSY-IA Deployment Guide
+# 🚀 PSY-IA — Déploiement
 
-## Options de déploiement
+App : compagnon IA privacy-first. Expo (React Native) → Web + Mobile, backend Supabase.
 
-### 1. **Mobile (Recommandé)**
-```bash
-cd src
-npm install
-eas build --platform ios --profile production
-eas build --platform android --profile production
-eas submit --platform ios --path <build-path>
-eas submit --platform android --path <build-path>
-```
+- **Web (prod, public) :** https://psy-ia.vercel.app
+- **Repo :** https://github.com/germainia17-dev/PSY-IA
+- **Mobile :** voir [MOBILE_DEPLOYMENT.md](./MOBILE_DEPLOYMENT.md)
 
-### 2. **Web (Expo Web)**
-```bash
-cd src
-npm install
-npx expo export --platform web --output-dir dist
-# Puis déployer dist/ sur Vercel/Netlify
-```
-
-### 3. **Docker + Railway/Render**
-```bash
-docker build -t psy-ia .
-docker run -p 3000:3000 psy-ia
-```
+---
 
 ## Architecture
 
-- **Frontend**: Expo (React Native) - Mobile + Web
-- **Backend**: Supabase + Deno Functions
-- **AI**: Gemini/Anthropic API
-- **Database**: PostgreSQL (Supabase)
-
-## Variables d'environnement
-
-Créer un `.env` avec:
-```
-EXPO_PUBLIC_SUPABASE_URL=
-EXPO_PUBLIC_SUPABASE_ANON_KEY=
-GEMINI_API_KEY=
-ANTHROPIC_API_KEY=
-```
-
-## Status
-
-✅ Code en production sur GitHub
-✅ App prête pour EAS Build
-✅ Backend Supabase configuré
-✅ Sondage PSY intégré
-
-À faire:
-1. Configurer Supabase project
-2. Obtenir les clés API (Gemini/Anthropic)
-3. Lancer un EAS build ou export web
-4. Déployer backend functions
+| Couche | Techno |
+|--------|--------|
+| Frontend | Expo (React Native) — mobile + web |
+| Backend | Supabase + Edge Functions (Deno) |
+| Base de données | PostgreSQL (Supabase) |
+| IA | Anthropic Claude / Gemini |
 
 ---
-Repository: https://github.com/germainia17-dev/PSY-IA
+
+## Web (Vercel)
+
+Déployé sur Vercel, accès **public permanent** (Deployment Protection désactivée).
+
+```bash
+cd src
+npm install --legacy-peer-deps
+npx vercel --prod          # build + deploy
+```
+
+`vercel.json` régénère le build à chaque déploiement :
+```json
+{
+  "buildCommand": "npx expo export --platform web --output-dir dist",
+  "outputDirectory": "dist",
+  "installCommand": "npm install --legacy-peer-deps",
+  "cleanUrls": true
+}
+```
+
+### Variables d'environnement
+
+À définir dans Vercel (Settings → Environment Variables) :
+```
+EXPO_PUBLIC_SUPABASE_URL
+EXPO_PUBLIC_SUPABASE_ANON_KEY
+```
+
+### Domaine / alias
+
+```bash
+vercel alias set <deployment-url> psy-ia.vercel.app
+```
+
+### Rendre public (si la protection est réactivée)
+
+Via l'API Vercel (token dans `~/Library/Application Support/com.vercel.cli/auth.json`) :
+```bash
+curl -X PATCH "https://api.vercel.com/v9/projects/<projectId>?teamId=<teamId>" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"ssoProtection":null}'
+```
+Ou : Dashboard → projet → Settings → Deployment Protection → Disable.
+
+---
+
+## Mobile
+
+Voir [MOBILE_DEPLOYMENT.md](./MOBILE_DEPLOYMENT.md) — build iOS/Android via EAS (nécessite compte Expo + creds Apple/Google).
+
+---
+
+## Statut
+
+| Composant | État |
+|-----------|------|
+| Web (Vercel) | ✅ public — https://psy-ia.vercel.app |
+| Variables d'env | ✅ Supabase configuré |
+| iOS / Android | ⏳ guide prêt, build non lancé |
+| Backend Supabase | ✅ configuré (ref `airakqqfpetzpbrrlyqq`) |
