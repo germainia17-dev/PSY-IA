@@ -15,6 +15,7 @@ import { getProUrl } from '../lib/api'
 import { usePro } from '../lib/use-pro'
 import { Confetti } from '../components/confetti'
 import { palettes, type as typo, type Palette } from '../constants/design'
+import { EXTERNAL_URLS } from '../constants/urls'
 
 export default function SettingsScreen() {
   const scheme = useColorScheme()
@@ -71,7 +72,7 @@ export default function SettingsScreen() {
             title="Sondage PSY"
             subtitle="Aide-nous à mieux te comprendre (2-3 min)"
             colors={colors}
-            onPress={() => Linking.openURL('https://docs.google.com/forms/d/e/1FAIpQLSdu-Ekw4ySmBmuazz9f6yRvHL2QE__DAbTywFq4nIVGIPALJA/viewform?usp=header')}
+            onPress={() => Linking.openURL(EXTERNAL_URLS.psySurvey)}
           />
         </Section>
 
