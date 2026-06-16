@@ -4,5 +4,5 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false,
-  "installCommand": "npm install --legacy-peer-deps && npm install @expo/cli"
+  "installCommand": "npm install --legacy-peer-deps"
 }
