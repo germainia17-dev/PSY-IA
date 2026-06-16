@@ -1,7 +1,8 @@
 {
   "framework": null,
-  "buildCommand": "echo prebuilt",
+  "buildCommand": "npx expo export --platform web --output-dir dist",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "installCommand": "npm install --legacy-peer-deps && npm install @expo/cli"
 }
