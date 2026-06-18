@@ -96,6 +96,22 @@ export async function isPro(): Promise<boolean> {
   }
 }
 
+// Génère une session Stripe Customer Portal pour gérer/résilier l'abonnement.
+export async function getPortalUrl(returnUrl?: string): Promise<string> {
+  const { token } = await ensureSession()
+  const response = await fetch(functionUrl('stripe-portal'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ return_url: returnUrl }),
+  })
+  if (!response.ok) throw new Error('Portail indisponible')
+  const data = await response.json()
+  return data.url as string
+}
+
 // URL de paiement Pro avec l'identifiant anonyme accroché.
 export async function getProUrl(): Promise<string> {
   try {

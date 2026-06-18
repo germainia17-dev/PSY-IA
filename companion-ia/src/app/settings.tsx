@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Linking,
   Pressable,
@@ -11,7 +11,8 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { getProUrl } from '../lib/api'
+import { getProUrl, getPortalUrl } from '../lib/api'
+import { getLinkedEmail } from '../lib/auth'
 import { usePro } from '../lib/use-pro'
 import { Confetti } from '../components/confetti'
 import { palettes, type as typo, type Palette } from '../constants/design'
@@ -22,7 +23,21 @@ export default function SettingsScreen() {
   const colors = palettes[scheme === 'dark' ? 'dark' : 'light']
   const router = useRouter()
   const [showConfetti, setShowConfetti] = useState(false)
+  const [linkedEmail, setLinkedEmail] = useState<string | null>(null)
   const { pro, refresh } = usePro(() => setShowConfetti(true))
+
+  useEffect(() => {
+    getLinkedEmail().then(setLinkedEmail).catch(() => {})
+  }, [])
+
+  async function openPortal() {
+    try {
+      const url = await getPortalUrl()
+      Linking.openURL(url)
+    } catch {
+      // Portail indisponible (ex. pas de stripe_customer_id) — silencieux
+    }
+  }
 
   async function openPro() {
     const url = await getProUrl()
@@ -40,6 +55,16 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        <Section label="Mon compte" colors={colors}>
+          <NavRow
+            icon="👤"
+            title="Compte"
+            subtitle={linkedEmail ?? 'Anonyme · sauvegarde ton compte →'}
+            colors={colors}
+            onPress={() => router.push('/account')}
+          />
+        </Section>
+
         <Section label="Ton compagnon" colors={colors}>
           <NavRow
             icon="🧠"
@@ -81,9 +106,8 @@ export default function SettingsScreen() {
             Tes conversations restent entre toi et ton compagnon.
           </Text>
           <Text style={[typo.caption as object, { color: colors.textMuted }]}>
-            Messages, historique et mémoire sont stockés uniquement sur cet appareil. Le serveur
-            relaie ta conversation (chiffrée en transit, HTTPS) vers l'IA pour générer la réponse,
-            sans jamais l'enregistrer. Aucun compte, aucun traqueur.
+            Tes conversations sont synchronisées de façon sécurisée (HTTPS) pour rester accessibles
+            sur tous tes appareils. La mémoire reste uniquement sur cet appareil. Aucun traqueur.
           </Text>
         </Section>
 
@@ -97,6 +121,11 @@ export default function SettingsScreen() {
               <Text style={[typo.caption as object, { color: colors.textMuted }]}>
                 Conversations illimitées. Merci de soutenir Companion.
               </Text>
+              <TouchableOpacity onPress={openPortal} hitSlop={8}>
+                <Text style={[typo.caption as object, { color: colors.textMuted, textDecorationLine: 'underline' }]}>
+                  Gérer ou annuler mon abonnement
+                </Text>
+              </TouchableOpacity>
             </>
           ) : (
             <>

@@ -89,6 +89,9 @@ export async function saveConversation(convo: Conversation): Promise<Conversatio
 
   await AsyncStorage.setItem(KEYS.convo(updated.id), JSON.stringify(updated))
 
+  // Sync cloud best-effort (non-bloquant, silencieux si offline)
+  import('./sync').then(({ pushConversation }) => pushConversation(updated)).catch(() => {})
+
   const index = await listConversations()
   const { messages: _omit, ...meta } = updated
   const next = [meta, ...index.filter((c) => c.id !== updated.id)]

@@ -92,6 +92,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Abonnement résilié : downgrade immédiat vers Free.
+    if (event.type === 'customer.subscription.deleted') {
+      const subscription = event.data.object as Stripe.Subscription
+      const customerId = typeof subscription.customer === 'string' ? subscription.customer : null
+
+      if (customerId) {
+        const { error } = await supabase.rpc('deactivate_pro', {
+          p_stripe_customer_id: customerId,
+        })
+        if (error) {
+          console.error('deactivate_pro a échoué:', error)
+          return new Response('Désactivation échouée', { status: 500 })
+        }
+        console.log('Pro désactivé pour customer', customerId)
+      }
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
