@@ -16,7 +16,7 @@ export function usePro(onUnlock?: () => void) {
 
   const refresh = useCallback(async () => {
     const p = await isPro()
-    if (p) setPro(true)
+    setPro(p)
     // Bascule = on était connu non-Pro, et on vient de le devenir, APRÈS la
     // première lecture. La toute première lecture ne fait qu'enregistrer l'état.
     if (initialized.current && p && !wasPro.current) {

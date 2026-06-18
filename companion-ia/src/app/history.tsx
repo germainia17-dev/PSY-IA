@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react'
 import {
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -19,6 +18,7 @@ import {
   setCurrentId,
   type ConversationMeta,
 } from '../lib/storage'
+import { confirm } from '../lib/confirm'
 import { palettes, type as typo } from '../constants/design'
 
 function formatDate(ts: number): string {
@@ -46,27 +46,28 @@ export default function HistoryScreen() {
 
   async function openConvo(id: string) {
     await setCurrentId(id)
-    router.back()
+    if (router.canGoBack()) router.back()
+    else router.replace('/')
   }
 
   async function startNew() {
     const fresh = await saveConversation(newConversation())
     await setCurrentId(fresh.id)
-    router.back()
+    if (router.canGoBack()) router.back()
+    else router.replace('/')
   }
 
   function confirmDelete(item: ConversationMeta) {
-    Alert.alert('Supprimer cette conversation', `« ${item.title} » sera effacée de cet appareil.`, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteConversation(item.id)
-          setItems(await listConversations())
-        },
+    confirm({
+      title: 'Supprimer cette conversation',
+      message: `« ${item.title} » sera effacée de cet appareil.`,
+      confirmLabel: 'Supprimer',
+      destructive: true,
+      onConfirm: async () => {
+        await deleteConversation(item.id)
+        setItems(await listConversations())
       },
-    ])
+    })
   }
 
   return (

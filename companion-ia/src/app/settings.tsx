@@ -11,12 +11,13 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { getProUrl, getPortalUrl } from '../lib/api'
+import { cancelSubscription } from '../lib/api'
 import { getLinkedEmail } from '../lib/auth'
 import { usePro } from '../lib/use-pro'
 import { Confetti } from '../components/confetti'
 import { palettes, type as typo, type Palette } from '../constants/design'
 import { EXTERNAL_URLS } from '../constants/urls'
+import { confirm, notify } from '../lib/confirm'
 
 export default function SettingsScreen() {
   const scheme = useColorScheme()
@@ -30,26 +31,22 @@ export default function SettingsScreen() {
     getLinkedEmail().then(setLinkedEmail).catch(() => {})
   }, [])
 
-  async function openPortal() {
-    try {
-      const url = await getPortalUrl()
-      Linking.openURL(url)
-    } catch {
-      // Portail indisponible (ex. pas de stripe_customer_id) — silencieux
-    }
-  }
-
-  async function openPro() {
-    const url = await getProUrl()
-    Linking.openURL(url)
-    // Au retour de Stripe, on resonde le plan pour basculer l'affichage en Pro.
-    let tries = 0
-    const poll = async () => {
-      tries += 1
-      if (await refresh()) return
-      if (tries < 12) setTimeout(poll, 5000)
-    }
-    setTimeout(poll, 5000)
+  function confirmCancel() {
+    confirm({
+      title: 'Annuler Companion Pro ?',
+      message: 'Tu repasseras à 10 messages par jour. Cette action est immédiate et irréversible.',
+      confirmLabel: 'Oui, annuler',
+      cancelLabel: 'Non, garder Pro',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await cancelSubscription()
+          await refresh()
+        } catch {
+          notify('Erreur', "Impossible d'annuler. Contacte le support.")
+        }
+      },
+    })
   }
 
   return (
@@ -121,9 +118,9 @@ export default function SettingsScreen() {
               <Text style={[typo.caption as object, { color: colors.textMuted }]}>
                 Conversations illimitées. Merci de soutenir Companion.
               </Text>
-              <TouchableOpacity onPress={openPortal} hitSlop={8}>
+              <TouchableOpacity onPress={confirmCancel} hitSlop={8}>
                 <Text style={[typo.caption as object, { color: colors.textMuted, textDecorationLine: 'underline' }]}>
-                  Gérer ou annuler mon abonnement
+                  Annuler mon abonnement
                 </Text>
               </TouchableOpacity>
             </>
@@ -133,7 +130,7 @@ export default function SettingsScreen() {
                 <Text style={[typo.label as object, { color: colors.text }]}>Gratuit</Text>
                 <Text style={[typo.caption as object, { color: colors.textMuted }]}>10 messages / jour</Text>
               </View>
-              <TouchableOpacity style={[styles.proBtn, { backgroundColor: colors.accent }]} activeOpacity={0.85} onPress={openPro}>
+              <TouchableOpacity style={[styles.proBtn, { backgroundColor: colors.accent }]} activeOpacity={0.85} onPress={() => router.push('/paywall')}>
                 <Text style={[typo.button as object, { color: colors.accentTx }]}>Passer à Companion Pro</Text>
               </TouchableOpacity>
               <Text style={[typo.caption as object, { color: colors.textMuted, textAlign: 'center' }]}>

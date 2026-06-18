@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   FlatList,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Redirect, useFocusEffect, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { sendChatMessage, extractMemory, getProUrl, ChatError } from '../lib/api'
+import { sendChatMessage, extractMemory, ChatError } from '../lib/api'
 import { usePro } from '../lib/use-pro'
 import {
   addMemoryFacts,
@@ -62,13 +61,10 @@ export default function ChatScreen() {
   const inputRef = useRef<TextInput>(null)
   const animateFrom = useRef(0) // index à partir duquel les bulles s'animent
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const proPoll = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((v) => setOnboarded(v === '1'))
     return () => {
       if (speakTimer.current) clearTimeout(speakTimer.current)
-      if (proPoll.current) clearTimeout(proPoll.current)
     }
   }, [])
 
@@ -178,24 +174,6 @@ export default function ChatScreen() {
     setInput('')
   }
 
-  async function openPro() {
-    const url = await getProUrl()
-    Linking.openURL(url)
-    // Le webhook Stripe active le Pro en quelques secondes. On resonde le plan
-    // jusqu'à ce qu'il bascule (utile sur le web, où l'écran reste affiché
-    // pendant le checkout dans un autre onglet). Chaîne de setTimeout plutôt
-    // qu'un setInterval : le tick suivant n'est planifié qu'une fois isPro()
-    // résolu, donc pas de requêtes qui se chevauchent sous réseau lent.
-    if (proPoll.current) clearTimeout(proPoll.current)
-    let tries = 0
-    const poll = async () => {
-      tries += 1
-      if (await refreshPro()) return
-      if (tries < 12) proPoll.current = setTimeout(poll, 5000)
-    }
-    proPoll.current = setTimeout(poll, 5000)
-  }
-
   // Amorce choisie : on pré-remplit le champ (sans envoyer) et on donne le focus,
   // l'utilisateur complète avec ses propres mots.
   function pickStarter(prefill: string) {
@@ -223,7 +201,7 @@ export default function ChatScreen() {
         <View style={styles.headerCenter}>
           <Text style={[typo.subtitle as object, { color: colors.text }]}>Companion</Text>
           <Text style={[typo.caption as object, { color: colors.textMuted }]}>
-            sans compte · privé
+            sans compte · local
           </Text>
         </View>
         <Pressable onPress={handleNew} style={styles.iconBtn} hitSlop={8}>
@@ -279,7 +257,7 @@ export default function ChatScreen() {
             <TouchableOpacity
               style={[styles.proBtn, { backgroundColor: colors.accent }]}
               activeOpacity={0.85}
-              onPress={openPro}>
+              onPress={() => router.push('/paywall')}>
               <Text style={[typo.button as object, { color: colors.accentTx }]}>Continuer avec Companion Pro</Text>
             </TouchableOpacity>
             <Text style={[typo.caption as object, { color: colors.textMuted }]}>

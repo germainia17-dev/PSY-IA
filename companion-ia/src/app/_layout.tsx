@@ -18,8 +18,11 @@ import { palettes } from '../constants/design'
 // swipe-to-dismiss). Présent à gauche du header de chaque modal.
 function ModalClose({ color }: { color: string }) {
   const router = useRouter()
+  // router.back() est un no-op quand la pile est vide (arrivée directe sur une
+  // URL en web, ou après un replace). On retombe alors sur l'accueil.
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/'))
   return (
-    <Pressable onPress={() => router.back()} hitSlop={12} style={{ paddingHorizontal: 4 }}>
+    <Pressable onPress={close} hitSlop={12} style={{ paddingHorizontal: 4 }}>
       <Text style={{ fontSize: 22, color, lineHeight: 24 }}>✕</Text>
     </Pressable>
   )
@@ -92,6 +95,7 @@ export default function RootLayout() {
       <Stack.Screen name="memory" options={{ ...sharedModal, title: 'Mémoire' }} />
       <Stack.Screen name="sessions" options={{ ...sharedModal, title: 'Séances' }} />
       <Stack.Screen name="account" options={{ ...sharedModal, title: 'Mon compte' }} />
+      <Stack.Screen name="paywall" options={{ ...sharedModal, title: 'Companion Pro' }} />
     </Stack>
   )
 }

@@ -11,6 +11,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/stripe-portal/index.ts"
 
+[functions.stripe-cancel]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/stripe-cancel/index.ts"
+
 [functions.chat]
 enabled = true
 verify_jwt = false

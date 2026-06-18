@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { getLinkedEmail, linkEmail, signInWithEmail, signOut } from '../lib/auth'
+import { confirm, notify } from '../lib/confirm'
 import { supabase } from '../lib/supabase'
 import { palettes, type as typo } from '../constants/design'
 
@@ -43,7 +43,7 @@ export default function AccountScreen() {
   async function handleLink() {
     const trimmed = email.trim().toLowerCase()
     if (!trimmed.includes('@')) {
-      Alert.alert('Email invalide', 'Saisis un email valide.')
+      notify('Email invalide', 'Saisis un email valide.')
       return
     }
     setLoading(true)
@@ -52,7 +52,7 @@ export default function AccountScreen() {
       setSent(true)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur inconnue'
-      Alert.alert('Erreur', msg)
+      notify('Erreur', msg)
     } finally {
       setLoading(false)
     }
@@ -61,7 +61,7 @@ export default function AccountScreen() {
   async function handleSignIn() {
     const trimmed = email.trim().toLowerCase()
     if (!trimmed.includes('@')) {
-      Alert.alert('Email invalide', 'Saisis un email valide.')
+      notify('Email invalide', 'Saisis un email valide.')
       return
     }
     setLoading(true)
@@ -70,28 +70,24 @@ export default function AccountScreen() {
       setSent(true)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur inconnue'
-      Alert.alert('Erreur', msg)
+      notify('Erreur', msg)
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleSignOut() {
-    Alert.alert(
-      'Se déconnecter',
-      'Tes conversations locales resteront sur cet appareil.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Se déconnecter',
-          style: 'destructive',
-          onPress: async () => {
-            await signOut()
-            router.back()
-          },
-        },
-      ],
-    )
+  function handleSignOut() {
+    confirm({
+      title: 'Se déconnecter',
+      message: 'Tes conversations locales resteront sur cet appareil.',
+      confirmLabel: 'Se déconnecter',
+      destructive: true,
+      onConfirm: async () => {
+        await signOut()
+        if (router.canGoBack()) router.back()
+        else router.replace('/')
+      },
+    })
   }
 
   if (linkedEmail === undefined) {

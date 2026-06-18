@@ -2,9 +2,26 @@
 import { supabase } from './supabase'
 import type { Message } from './storage'
 
-// Lien de paiement Stripe (Companion Pro). On y accroche l'user_id en
-// client_reference_id pour qu'un webhook puisse activer le Pro côté backend.
-const STRIPE_PRO_LINK = 'https://buy.stripe.com/fZu28q4YQcHG7jM8ijfrW04'
+export type PlanInterval = 'weekly' | 'monthly' | 'annual'
+
+const STRIPE_LINKS: Record<PlanInterval, string> = {
+  weekly:  'https://buy.stripe.com/8x2aEWajabDCfQi567frW05',
+  monthly: 'https://buy.stripe.com/cNi28q1ME5fedIadCDfrW06',
+  annual:  'https://buy.stripe.com/dRm9ASdvm9vucE6fKLfrW07',
+}
+
+export const PRO_OFFERS: {
+  interval: PlanInterval
+  label: string
+  price: string
+  period: string
+  sublabel?: string
+  highlight?: boolean
+}[] = [
+  { interval: 'weekly',  label: 'Hebdomadaire', price: '2,99€', period: '/ semaine' },
+  { interval: 'monthly', label: 'Mensuel',      price: '7,99€', period: '/ mois',   sublabel: 'LE + POPULAIRE', highlight: true },
+  { interval: 'annual',  label: 'Annuel',       price: '49,99€', period: '/ an',    sublabel: '-48%' },
+]
 
 export type ChatResult = {
   text: string
@@ -96,28 +113,26 @@ export async function isPro(): Promise<boolean> {
   }
 }
 
-// Génère une session Stripe Customer Portal pour gérer/résilier l'abonnement.
-export async function getPortalUrl(returnUrl?: string): Promise<string> {
+// Annule l'abonnement Stripe et downgrade immédiatement vers Free.
+export async function cancelSubscription(): Promise<void> {
   const { token } = await ensureSession()
-  const response = await fetch(functionUrl('stripe-portal'), {
+  const response = await fetch(functionUrl('stripe-cancel'), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ return_url: returnUrl }),
+    headers: { Authorization: `Bearer ${token}` },
   })
-  if (!response.ok) throw new Error('Portail indisponible')
-  const data = await response.json()
-  return data.url as string
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    throw new Error(data?.error ?? 'Annulation impossible')
+  }
 }
 
 // URL de paiement Pro avec l'identifiant anonyme accroché.
-export async function getProUrl(): Promise<string> {
+export async function getProUrl(interval: PlanInterval = 'monthly'): Promise<string> {
+  const base = STRIPE_LINKS[interval]
   try {
     const { userId } = await ensureSession()
-    return `${STRIPE_PRO_LINK}?client_reference_id=${encodeURIComponent(userId)}`
+    return `${base}?client_reference_id=${encodeURIComponent(userId)}`
   } catch {
-    return STRIPE_PRO_LINK
+    return base
   }
 }
