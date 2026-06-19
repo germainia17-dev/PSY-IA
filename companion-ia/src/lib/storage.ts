@@ -30,6 +30,23 @@ export type MemoryFact = {
   createdAt: number
 }
 
+// Préférences de personnalisation visuelle. Restent sur l'appareil.
+// `avatar` + `accent` sont gratuits ; `theme` + `tone` sont réservés au Pro.
+// (Application à l'IA / au thème global = étape 2 — ici on ne fait que stocker.)
+export type Personalization = {
+  logo: string | null // data URI du logo uploadé par l'utilisateur (null = aucun)
+  accent: string // id de couleur d'accent (cf. ACCENTS dans l'écran)
+  theme: string // id de thème premium (Pro)
+  tone: string // id de ton de l'IA premium (Pro)
+}
+
+export const DEFAULT_PERSONALIZATION: Personalization = {
+  logo: null,
+  accent: 'terracotta',
+  theme: 'cream',
+  tone: 'doux',
+}
+
 export const WELCOME_TEXT = "Salut, je suis là. Comment tu te sens aujourd'hui ?"
 const DEFAULT_TITLE = 'Nouvelle conversation'
 const MAX_FACTS = 40
@@ -39,6 +56,9 @@ const KEYS = {
   convo: (id: string) => `@companion_convo:${id}`,
   current: '@companion_current',
   memory: '@companion_memory',
+  personalization: '@companion_personalization',
+  name: '@companion_name',
+  mood: '@companion_mood',
   ollamaUrl: '@ollama_url',
   ollamaModel: '@ollama_model',
 }
@@ -49,6 +69,20 @@ function uid(): string {
 
 function titleFrom(text: string): string {
   return text.trim().replace(/\s+/g, ' ').slice(0, 40) || DEFAULT_TITLE
+}
+
+// Clé de jour local "YYYY-M-D" pour regrouper conversations et humeurs par date.
+function dayKey(ts: number): string {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+
+// Message d'accueil : personnalisé si on connaît le prénom, neutre sinon.
+export function buildWelcome(name?: string | null): string {
+  const n = name?.trim()
+  return n
+    ? `Salut ${n}, content de te rencontrer. Qu'est-ce qui t'amène aujourd'hui ?`
+    : WELCOME_TEXT
 }
 
 // ── Conversations ─────────────────────────────────────────────
@@ -64,7 +98,7 @@ export async function loadConversation(id: string): Promise<Conversation | null>
   return raw ? JSON.parse(raw) : null
 }
 
-export function newConversation(): Conversation {
+export function newConversation(name?: string | null): Conversation {
   const now = Date.now()
   return {
     id: uid(),
@@ -72,7 +106,7 @@ export function newConversation(): Conversation {
     preview: '',
     createdAt: now,
     updatedAt: now,
-    messages: [{ role: 'assistant', content: WELCOME_TEXT }],
+    messages: [{ role: 'assistant', content: buildWelcome(name) }],
   }
 }
 
@@ -122,7 +156,57 @@ export async function loadCurrentOrNew(): Promise<Conversation> {
     const convo = await loadConversation(index[0].id)
     if (convo) return convo
   }
-  return newConversation()
+  return newConversation(await getUserName())
+}
+
+// ── Prénom de l'utilisateur ───────────────────────────────────
+// Optionnel (l'app reste utilisable sans compte). Sert à personnaliser le tout
+// premier message — l'effet "il me connaît" dès la première phrase.
+
+export async function getUserName(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.name)
+}
+
+export async function setUserName(name: string): Promise<void> {
+  await AsyncStorage.setItem(KEYS.name, name.trim().slice(0, 40))
+}
+
+// ── Parcours : série de présence + humeur du jour ─────────────
+// Tout est local et dérivé de données déjà présentes (dates de conversations).
+// Donne à l'utilisateur un signal visible qu'il revient et qu'il avance.
+
+export type Mood = { date: string; value: number } // value 1 (dur) … 5 (super)
+
+// Série de jours consécutifs avec au moins une conversation. Tolère un
+// "aujourd'hui" encore vide tant qu'hier est plein (la série n'est pas cassée).
+export async function getStreak(): Promise<number> {
+  const days = new Set((await listConversations()).map((m) => dayKey(m.updatedAt)))
+  if (days.size === 0) return 0
+  const cursor = new Date()
+  if (!days.has(dayKey(cursor.getTime()))) cursor.setDate(cursor.getDate() - 1)
+  let streak = 0
+  while (days.has(dayKey(cursor.getTime()))) {
+    streak++
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return streak
+}
+
+export async function getMoods(): Promise<Mood[]> {
+  const raw = await AsyncStorage.getItem(KEYS.mood)
+  return raw ? JSON.parse(raw) : []
+}
+
+export async function getTodayMood(): Promise<number | null> {
+  const today = dayKey(Date.now())
+  return (await getMoods()).find((m) => m.date === today)?.value ?? null
+}
+
+// Une seule humeur par jour : on remplace celle d'aujourd'hui si elle existe.
+export async function setTodayMood(value: number): Promise<void> {
+  const today = dayKey(Date.now())
+  const next = [...(await getMoods()).filter((m) => m.date !== today), { date: today, value }]
+  await AsyncStorage.setItem(KEYS.mood, JSON.stringify(next.slice(-90)))
 }
 
 // ── Mémoire locale ────────────────────────────────────────────
@@ -163,6 +247,28 @@ export async function removeMemoryFact(id: string): Promise<void> {
 
 export async function clearMemory(): Promise<void> {
   await AsyncStorage.removeItem(KEYS.memory)
+}
+
+// ── Personnalisation ──────────────────────────────────────────
+// Choix visuels de l'utilisateur (avatar, accent, thème, ton). Fusionnés avec
+// les valeurs par défaut pour rester robustes si on ajoute des champs plus tard.
+
+export async function getPersonalization(): Promise<Personalization> {
+  const raw = await AsyncStorage.getItem(KEYS.personalization)
+  if (!raw) return DEFAULT_PERSONALIZATION
+  try {
+    return { ...DEFAULT_PERSONALIZATION, ...JSON.parse(raw) }
+  } catch {
+    return DEFAULT_PERSONALIZATION
+  }
+}
+
+// Applique une mise à jour partielle et renvoie l'état complet enregistré.
+export async function setPersonalization(patch: Partial<Personalization>): Promise<Personalization> {
+  const current = await getPersonalization()
+  const next = { ...current, ...patch }
+  await AsyncStorage.setItem(KEYS.personalization, JSON.stringify(next))
+  return next
 }
 
 // ── Ollama (mode dev local) ───────────────────────────────────

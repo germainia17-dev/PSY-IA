@@ -8,7 +8,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -20,14 +19,24 @@ import { usePro } from '../lib/use-pro'
 import {
   addMemoryFacts,
   getMemory,
+  getStreak,
+  getTodayMood,
+  getUserName,
   loadCurrentOrNew,
   newConversation,
   saveConversation,
   setCurrentId,
+  setTodayMood,
   type Conversation,
   type Message,
 } from '../lib/storage'
-import { palettes, type as typo } from '../constants/design'
+import {
+  enableDailyReminder,
+  markReminderAsked,
+  reminderAsked,
+} from '../lib/notifications'
+import { type as typo } from '../constants/type'
+import { useTheme } from '../hooks/use-theme'
 import { ChatBubble } from '../components/chat-bubble'
 import { Orb, type OrbState } from '../components/orb'
 import { Starters } from '../components/starters'
@@ -43,9 +52,11 @@ function haptic(kind: 'send' | 'receive' | 'limit') {
   else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
 }
 
+// Échelle d'humeur (index 0 → valeur 1). Un seul tap, sur conversation neuve.
+const MOODS = ['😔', '😕', '😐', '🙂', '😄']
+
 export default function ChatScreen() {
-  const scheme = useColorScheme()
-  const colors = palettes[scheme === 'dark' ? 'dark' : 'light']
+  const colors = useTheme()
   const router = useRouter()
 
   const [convo, setConvo] = useState<Conversation | null>(null)
@@ -57,6 +68,9 @@ export default function ChatScreen() {
   const [speaking, setSpeaking] = useState(false)
   const [onboarded, setOnboarded] = useState<boolean | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [askReminder, setAskReminder] = useState(false)
+  const [todayMood, setTodayMoodState] = useState<number | null>(null)
+  const [streak, setStreak] = useState(0)
   const listRef = useRef<FlatList>(null)
   const inputRef = useRef<TextInput>(null)
   const animateFrom = useRef(0) // index à partir duquel les bulles s'animent
@@ -84,6 +98,9 @@ export default function ChatScreen() {
         animateFrom.current = c.messages.length
         setConvo(c)
       })
+      // Humeur du jour + série de présence : rafraîchies à chaque retour sur le chat.
+      getTodayMood().then((m) => active && setTodayMoodState(m))
+      getStreak().then((s) => active && setStreak(s))
       return () => {
         active = false
       }
@@ -143,6 +160,12 @@ export default function ChatScreen() {
           if (facts.length > 0) addMemoryFacts(facts)
         })
       }
+
+      // Après le tout premier échange — le moment où le lien se crée — on propose
+      // (une seule fois) un rappel quotidien. C'est le levier de rétention J1/J7.
+      if (userTurns === 1 && Platform.OS !== 'web' && !(await reminderAsked())) {
+        setAskReminder(true)
+      }
     } catch (err) {
       if (err instanceof ChatError && err.code === 'limit_reached') {
         haptic('limit')
@@ -166,7 +189,7 @@ export default function ChatScreen() {
   }
 
   async function handleNew() {
-    const fresh = newConversation()
+    const fresh = newConversation(await getUserName())
     await setCurrentId(fresh.id)
     animateFrom.current = fresh.messages.length
     setConvo(fresh)
@@ -179,6 +202,23 @@ export default function ChatScreen() {
   function pickStarter(prefill: string) {
     setInput(prefill)
     setTimeout(() => inputRef.current?.focus(), 60)
+  }
+
+  // Humeur du jour : enregistrée localement, mise à jour optimiste de l'UI.
+  function pickMood(value: number) {
+    setTodayMoodState(value)
+    setTodayMood(value).catch(() => {})
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+  }
+
+  async function acceptReminder() {
+    await enableDailyReminder()
+    await markReminderAsked()
+    setAskReminder(false)
+  }
+  async function dismissReminder() {
+    await markReminderAsked()
+    setAskReminder(false)
   }
 
   const hasText = input.trim().length > 0
@@ -204,6 +244,15 @@ export default function ChatScreen() {
             sans compte · local
           </Text>
         </View>
+        {streak > 0 ? (
+          <Pressable
+            onPress={() => router.push('/journey')}
+            hitSlop={8}
+            style={[styles.streakPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={{ fontSize: 13 }}>🔥</Text>
+            <Text style={{ color: colors.text, fontFamily: 'Inter_600SemiBold', fontSize: 13 }}>{streak}</Text>
+          </Pressable>
+        ) : null}
         <Pressable onPress={handleNew} style={styles.iconBtn} hitSlop={8}>
           <Text style={{ fontSize: 22, color: colors.textMuted }}>＋</Text>
         </Pressable>
@@ -236,12 +285,46 @@ export default function ChatScreen() {
               <Orb state="thinking" size={36} />
             </View>
           ) : isFresh ? (
-            <Starters colors={colors} onPick={pickStarter} />
+            <View>
+              {todayMood === null ? (
+                <View style={styles.moodRow}>
+                  <Text style={[styles.moodLabel, { color: colors.textFaint }]}>COMMENT TU TE SENS ?</Text>
+                  <View style={styles.moodEmojis}>
+                    {MOODS.map((emoji, i) => (
+                      <Pressable key={i} onPress={() => pickMood(i + 1)} hitSlop={6}>
+                        <Text style={{ fontSize: 30 }}>{emoji}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+              <Starters colors={colors} onPick={pickStarter} />
+            </View>
           ) : null
         }
       />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {askReminder ? (
+          <View style={[styles.limitCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[typo.subtitle as object, { color: colors.text, textAlign: 'center' }]}>
+              Je passe te faire un coucou demain ?
+            </Text>
+            <Text style={[typo.caption as object, { color: colors.textMuted, textAlign: 'center', maxWidth: 280 }]}>
+              Un rappel doux chaque soir à 20h, pour prendre un moment rien que pour toi. Tu peux
+              l'arrêter quand tu veux.
+            </Text>
+            <TouchableOpacity
+              style={[styles.proBtn, { backgroundColor: colors.accent }]}
+              activeOpacity={0.85}
+              onPress={acceptReminder}>
+              <Text style={[typo.button as object, { color: colors.accentTx }]}>Oui, chaque soir</Text>
+            </TouchableOpacity>
+            <Pressable onPress={dismissReminder} hitSlop={8}>
+              <Text style={[typo.caption as object, { color: colors.textMuted }]}>Plus tard</Text>
+            </Pressable>
+          </View>
+        ) : null}
         {limited ? (
           <View style={[styles.limitCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={{ opacity: 0.55, transform: [{ scale: 0.85 }] }}>
@@ -329,6 +412,19 @@ const styles = StyleSheet.create({
   },
   headerCenter: { flex: 1, marginLeft: 2 },
   iconBtn: { padding: 6 },
+  streakPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginRight: 2,
+  },
+  moodRow: { marginTop: 28, alignItems: 'center', gap: 4 },
+  moodLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8 },
+  moodEmojis: { flexDirection: 'row', gap: 14, marginTop: 6 },
   list: { paddingHorizontal: 16, paddingVertical: 12 },
   typingOrb: { marginTop: 14, alignSelf: 'flex-start', marginLeft: 4 },
   composer: {

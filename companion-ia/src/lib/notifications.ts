@@ -33,6 +33,13 @@ const REMINDERS = [
   'Comment tu te sens, là, maintenant ?',
 ]
 
+// Rappel quotidien "par défaut", activable en un seul tap depuis le chat —
+// distinct des séances sur-mesure ci-dessus. C'est le vrai levier de rétention :
+// la plupart des gens ne configurent jamais une séance, mais accepteront un
+// rappel doux proposé au bon moment.
+const DAILY_KEY = '@companion_daily_reminder' // id de la notif planifiée
+const ASKED_KEY = '@companion_reminder_asked' // a-t-on déjà proposé le rappel ?
+
 let configured = false
 
 export function configureNotifications() {
@@ -107,6 +114,39 @@ export async function removeSession(id: string): Promise<void> {
     }
   }
   await persist(sessions.filter((s) => s.id !== id))
+}
+
+// ── Rappel quotidien (1 tap) ──────────────────────────────────
+
+// Active un rappel quotidien à heure fixe. Idempotent : ne reprogramme pas si
+// déjà actif. Renvoie false si web ou permission refusée.
+export async function enableDailyReminder(hour = 20, minute = 0): Promise<boolean> {
+  if (Platform.OS === 'web' || !(await ensurePermission())) return false
+  if (await AsyncStorage.getItem(DAILY_KEY)) return true // déjà actif
+  const id = await Notifications.scheduleNotificationAsync({
+    content: { title: 'Companion', body: pickReminder(hour), sound: true },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
+  })
+  await AsyncStorage.setItem(DAILY_KEY, id)
+  return true
+}
+
+export async function disableDailyReminder(): Promise<void> {
+  const id = await AsyncStorage.getItem(DAILY_KEY)
+  if (id) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {})
+  await AsyncStorage.removeItem(DAILY_KEY)
+}
+
+export async function isDailyReminderOn(): Promise<boolean> {
+  return (await AsyncStorage.getItem(DAILY_KEY)) !== null
+}
+
+export async function reminderAsked(): Promise<boolean> {
+  return (await AsyncStorage.getItem(ASKED_KEY)) !== null
+}
+
+export async function markReminderAsked(): Promise<void> {
+  await AsyncStorage.setItem(ASKED_KEY, '1')
 }
 
 export function formatTime(hour: number, minute: number): string {

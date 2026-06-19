@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Stack, useRouter } from 'expo-router'
-import { Linking, Platform, Pressable, Text, useColorScheme } from 'react-native'
+import { Linking, Platform, Pressable, Text } from 'react-native'
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -12,7 +12,7 @@ import { configureNotifications } from '../lib/notifications'
 import { handleAuthRedirect } from '../lib/auth'
 import { pullConversations, syncConversations } from '../lib/sync'
 import { supabase } from '../lib/supabase'
-import { palettes } from '../constants/design'
+import { ThemeProvider, useTheme } from '../lib/theme'
 
 // Bouton de fermeture des écrans modaux (indispensable sur le web : pas de
 // swipe-to-dismiss). Présent à gauche du header de chaque modal.
@@ -29,10 +29,6 @@ function ModalClose({ color }: { color: string }) {
 }
 
 export default function RootLayout() {
-  const scheme = useColorScheme()
-  const isDark = scheme === 'dark'
-  const colors = palettes[isDark ? 'dark' : 'light']
-
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -72,6 +68,18 @@ export default function RootLayout() {
   // même avec la police système, sinon l'écran reste blanc indéfiniment.
   if (!fontsLoaded && !fontError) return null
 
+  // Le provider de thème enveloppe toute la navigation : la palette active
+  // (cream/nuit/foret/aurore) est ainsi disponible dans chaque écran et header.
+  return (
+    <ThemeProvider>
+      <RootStack />
+    </ThemeProvider>
+  )
+}
+
+function RootStack() {
+  const colors = useTheme()
+
   const sharedModal = {
     presentation: 'modal' as const,
     headerShown: true,
@@ -93,6 +101,8 @@ export default function RootLayout() {
       <Stack.Screen name="settings" options={{ ...sharedModal, title: 'Paramètres' }} />
       <Stack.Screen name="history" options={{ ...sharedModal, title: 'Conversations' }} />
       <Stack.Screen name="memory" options={{ ...sharedModal, title: 'Mémoire' }} />
+      <Stack.Screen name="journey" options={{ ...sharedModal, title: 'Mon parcours' }} />
+      <Stack.Screen name="personalization" options={{ ...sharedModal, title: 'Personnalisation' }} />
       <Stack.Screen name="sessions" options={{ ...sharedModal, title: 'Séances' }} />
       <Stack.Screen name="account" options={{ ...sharedModal, title: 'Mon compte' }} />
       <Stack.Screen name="paywall" options={{ ...sharedModal, title: 'Companion Pro' }} />

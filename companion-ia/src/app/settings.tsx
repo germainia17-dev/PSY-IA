@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -15,13 +14,13 @@ import { cancelSubscription } from '../lib/api'
 import { getLinkedEmail } from '../lib/auth'
 import { usePro } from '../lib/use-pro'
 import { Confetti } from '../components/confetti'
-import { palettes, type as typo, type Palette } from '../constants/design'
+import { type as typo, type Palette } from '../constants/type'
+import { useTheme } from '../hooks/use-theme'
 import { EXTERNAL_URLS } from '../constants/urls'
 import { confirm, notify } from '../lib/confirm'
 
 export default function SettingsScreen() {
-  const scheme = useColorScheme()
-  const colors = palettes[scheme === 'dark' ? 'dark' : 'light']
+  const colors = useTheme()
   const router = useRouter()
   const [showConfetti, setShowConfetti] = useState(false)
   const [linkedEmail, setLinkedEmail] = useState<string | null>(null)
@@ -63,6 +62,22 @@ export default function SettingsScreen() {
         </Section>
 
         <Section label="Ton compagnon" colors={colors}>
+          <NavRow
+            icon="✨"
+            title="Mon parcours"
+            subtitle="Ta série de présence et ton humeur"
+            colors={colors}
+            onPress={() => router.push('/journey')}
+          />
+          <Divider colors={colors} />
+          <NavRow
+            icon="🎨"
+            title="Personnalisation"
+            subtitle="Logo, couleurs · thèmes & ton ✦ Pro"
+            colors={colors}
+            onPress={() => router.push('/personalization')}
+          />
+          <Divider colors={colors} />
           <NavRow
             icon="🧠"
             title="Mémoire"

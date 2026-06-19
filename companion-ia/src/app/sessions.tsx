@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -14,29 +13,46 @@ import { useFocusEffect } from 'expo-router'
 import {
   addSession,
   describeDays,
+  disableDailyReminder,
+  enableDailyReminder,
   formatTime,
   getSessions,
+  isDailyReminderOn,
   removeSession,
   WEEKDAYS,
   type Session,
 } from '../lib/notifications'
-import { palettes, type as typo } from '../constants/design'
+import { type as typo, type Palette } from '../constants/type'
+import { useTheme } from '../hooks/use-theme'
+import { Toggle } from '../components/ui/Toggle'
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const MINUTES = [0, 15, 30, 45]
 
 export default function SessionsScreen() {
-  const scheme = useColorScheme()
-  const colors = palettes[scheme === 'dark' ? 'dark' : 'light']
+  const colors = useTheme()
 
   const [sessions, setSessions] = useState<Session[]>([])
   const [hour, setHour] = useState(20)
   const [minute, setMinute] = useState(0)
   const [days, setDays] = useState<number[]>([2, 3, 4, 5, 6])
   const [denied, setDenied] = useState(false)
+  const [dailyOn, setDailyOn] = useState(false)
+
+  async function toggleDaily(on: boolean) {
+    if (on) {
+      const ok = await enableDailyReminder()
+      setDailyOn(ok)
+      if (!ok) setDenied(true)
+    } else {
+      await disableDailyReminder()
+      setDailyOn(false)
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
+      isDailyReminderOn().then(setDailyOn)
       getSessions().then(setSessions)
     }, []),
   )
@@ -78,6 +94,17 @@ export default function SessionsScreen() {
           Programme des rendez-vous doux avec ton compagnon. Tu recevras un rappel discret pour
           prendre un moment rien que pour toi. Tout reste sur ton téléphone.
         </Text>
+
+        {/* Rappel quotidien simple (20h) — le réglage le plus courant, en un geste. */}
+        <View style={[styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={[typo.label as object, { color: colors.text }]}>Rappel quotidien</Text>
+            <Text style={[typo.caption as object, { color: colors.textMuted, marginTop: 2 }]}>
+              Un coucou chaque soir à 20h
+            </Text>
+          </View>
+          <Toggle value={dailyOn} onValueChange={toggleDaily} />
+        </View>
 
         {/* Heure */}
         <Text style={[styles.sectionLabel, { color: colors.textFaint }]}>HEURE</Text>
@@ -161,7 +188,7 @@ function Chip({
   label: string
   active: boolean
   onPress: () => void
-  colors: (typeof palettes)['dark']
+  colors: Palette
 }) {
   return (
     <Pressable
@@ -178,6 +205,13 @@ function Chip({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { padding: 20, gap: 12, paddingBottom: 40 },
+  dailyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   sectionLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, marginTop: 8 },
   pickerRow: { marginHorizontal: -20 },
   pills: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, flexWrap: 'wrap' },
