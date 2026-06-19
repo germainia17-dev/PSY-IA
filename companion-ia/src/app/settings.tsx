@@ -158,10 +158,10 @@ export default function SettingsScreen() {
           />
           <NavRow
             icon="shield-checkmark-outline"
-            title="Confidentialité"
-            subtitle="Tes données restent entre toi et Companion"
+            title="Politique & Confidentialité"
+            subtitle="Conditions d'utilisation et données"
             colors={colors}
-            onPress={() => {}}
+            onPress={() => router.push('/policy')}
             last
           />
         </Section>

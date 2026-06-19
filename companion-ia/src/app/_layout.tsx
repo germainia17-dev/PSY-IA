@@ -106,6 +106,7 @@ function RootStack() {
       <Stack.Screen name="sessions" options={{ ...sharedModal, title: 'Séances' }} />
       <Stack.Screen name="account" options={{ ...sharedModal, title: 'Mon compte' }} />
       <Stack.Screen name="evolution" options={{ ...sharedModal, title: 'Ton évolution' }} />
+      <Stack.Screen name="policy" options={{ ...sharedModal, title: 'Politique & Confidentialité' }} />
       <Stack.Screen name="paywall" options={{ ...sharedModal, title: 'Companion Pro' }} />
     </Stack>
   )
