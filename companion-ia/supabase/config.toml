@@ -26,3 +26,12 @@ entrypoint = "./functions/chat/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/chat/*.html" ]
+
+[functions.re-engagement]
+enabled = true
+# Pas de JWT utilisateur : appelé par le scheduler interne, pas par le client.
+# Protégé par CRON_SECRET (variable d'environnement Supabase).
+verify_jwt = false
+entrypoint = "./functions/re-engagement/index.ts"
+# Déclenché chaque soir à 18h UTC (20h Paris en hiver, 20h CEST en été).
+schedule = "0 18 * * *"
