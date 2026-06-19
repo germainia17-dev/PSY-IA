@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect } from 'expo-router'
 import { clearMemory, getMemory, removeMemoryFact, type MemoryFact } from '../lib/storage'
-import { palettes, type as typo } from '../constants/design'
+import { palettes, type as typo } from '../constants/type'
 
 export default function MemoryScreen() {
   const scheme = useColorScheme()

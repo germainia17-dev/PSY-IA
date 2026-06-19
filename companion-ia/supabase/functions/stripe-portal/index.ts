@@ -48,7 +48,10 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}))
-    const returnUrl: string = body.return_url ?? 'companion://settings'
+    // Stripe exige HTTPS — on fallback sur l'app web déployée ou localhost en dev
+    const returnUrl: string = body.return_url && body.return_url.startsWith('https://')
+      ? body.return_url
+      : 'https://companion-ia.vercel.app/settings'
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,

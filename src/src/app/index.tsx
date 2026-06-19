@@ -28,7 +28,7 @@ import {
   type Conversation,
   type Message,
 } from '../lib/storage'
-import { palettes, type as typo } from '../constants/design'
+import { palettes, type as typo } from '../constants/type'
 import { ChatBubble } from '../components/chat-bubble'
 import { Orb, type OrbState } from '../components/orb'
 import { Starters } from '../components/starters'

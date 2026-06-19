@@ -137,10 +137,9 @@ Deno.serve(async (req) => {
     return new Response('Méthode non autorisée', { status: 405 })
   }
 
-  // Protection : si appelé manuellement (hors scheduler), exige le CRON_SECRET.
-  // Le scheduler Supabase passe Authorization: Bearer {service_role_key}, ce qui
-  // satisfait cette vérification quand CRON_SECRET = service_role_key (ou simplement
-  // en laissant passer toutes les requêtes issues de l'intérieur de Supabase).
+  // Protection : si CRON_SECRET est défini, exige le header Authorization.
+  // Les appels de pg_cron (internes) n'ont pas de secret : laisse CRON_SECRET vide
+  // dans Supabase Secrets pour accepter les appels du scheduler cron.
   const cronSecret = Deno.env.get('CRON_SECRET') ?? ''
   if (cronSecret) {
     const auth = req.headers.get('Authorization') ?? ''

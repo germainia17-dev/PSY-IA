@@ -1,14 +1,6 @@
 /**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
+ * Palette active de l'app. Délègue au ThemeProvider (lib/theme) pour que le
+ * thème choisi (cream/nuit/foret/aurore) s'applique partout, de façon réactive.
+ * Point d'entrée historique conservé : les composants importent `@/hooks/use-theme`.
  */
-
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export function useTheme() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
-
-  return Colors[theme];
-}
+export { useTheme } from '@/lib/theme';

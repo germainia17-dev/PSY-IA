@@ -23,6 +23,19 @@ Tu ne donnes jamais de conseils médicaux et ne prétends jamais être thérapeu
 
 const EXTRACT_PROMPT = `Tu extrais des faits DURABLES et importants sur l'utilisateur à partir de la conversation, pour qu'un compagnon s'en souvienne plus tard. Faits durables = prénom, âge, projets, études/travail, passions, relations proches, objectifs, situation de vie. Ignore l'éphémère (l'humeur du moment, le sujet d'une seule fois). Retourne UNIQUEMENT un tableau JSON de chaînes courtes en français (max 5, chacune < 120 caractères), sans aucun texte autour. Si rien de durable, retourne []. Exemple: ["Prépare un bac STI2D","Passionné par l'impression 3D","Fait du ski aux Portes du Soleil"]`
 
+// Tons de l'IA (fonctionnalité Pro). `doux` = comportement par défaut décrit
+// dans SYSTEM_PROMPT → pas d'instruction ajoutée. Les autres infléchissent le
+// style sans toucher au fond (écoute, pas de conseils médicaux, etc.).
+const TONE_INSTRUCTIONS: Record<string, string> = {
+  doux: '',
+  direct:
+    "TON À ADOPTER — direct : va à l'essentiel, dis les choses clairement et franchement, sans tourner autour du pot, tout en restant chaleureux et respectueux.",
+  motivant:
+    "TON À ADOPTER — motivant : sois encourageant et énergique, souligne les forces de la personne et donne-lui de l'élan vers l'action, sans jamais nier ou minimiser ce qu'elle ressent.",
+  pose:
+    'TON À ADOPTER — posé : ralentis, parle avec calme, douceur et profondeur, laisse de la place au silence, sans précipitation.',
+}
+
 const MAX_HISTORY = 20 // derniers messages envoyés au modèle
 const MAX_MESSAGE_LENGTH = 4000
 const MAX_MEMORY_FACTS = 40
@@ -55,15 +68,27 @@ function validateMessages(input: unknown): Msg[] | null {
   return messages
 }
 
-// Construit le prompt système en y greffant la mémoire locale envoyée par le client.
-function buildSystem(memory: unknown): string {
-  if (!Array.isArray(memory) || memory.length === 0) return SYSTEM_PROMPT
-  const facts = memory
-    .filter((f) => typeof f === 'string' && f.length > 0)
-    .slice(0, MAX_MEMORY_FACTS)
-    .map((f) => `- ${String(f).slice(0, 200)}`)
-  if (facts.length === 0) return SYSTEM_PROMPT
-  return `${SYSTEM_PROMPT}\n\nCe que tu sais déjà sur cette personne (souviens-t'en naturellement, sans le réciter) :\n${facts.join('\n')}`
+// Construit le prompt système : base + ton choisi (Pro) + mémoire locale.
+function buildSystem(memory: unknown, tone: unknown): string {
+  let system = SYSTEM_PROMPT
+
+  // Ton de l'IA (Pro). On n'accepte qu'une valeur connue ; sinon comportement
+  // par défaut. `doux` n'ajoute rien (c'est déjà le ton de base).
+  const toneKey = typeof tone === 'string' ? tone : ''
+  const toneInstruction = TONE_INSTRUCTIONS[toneKey]
+  if (toneInstruction) system += `\n\n${toneInstruction}`
+
+  if (Array.isArray(memory) && memory.length > 0) {
+    const facts = memory
+      .filter((f) => typeof f === 'string' && f.length > 0)
+      .slice(0, MAX_MEMORY_FACTS)
+      .map((f) => `- ${String(f).slice(0, 200)}`)
+    if (facts.length > 0) {
+      system += `\n\nCe que tu sais déjà sur cette personne (souviens-t'en naturellement, sans le réciter) :\n${facts.join('\n')}`
+    }
+  }
+
+  return system
 }
 
 async function callGemini(messages: Msg[], apiKey: string, system: string, maxTokens = 400): Promise<string> {
@@ -162,7 +187,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Session invalide' }, 401)
   }
 
-  let body: { messages?: unknown; memory?: unknown; mode?: unknown }
+  let body: { messages?: unknown; memory?: unknown; mode?: unknown; tone?: unknown }
   try {
     body = await req.json()
   } catch {
@@ -215,7 +240,7 @@ Deno.serve(async (req) => {
     )
   }
 
-  const system = buildSystem(body?.memory)
+  const system = buildSystem(body?.memory, body?.tone)
   const errors: string[] = []
 
   if (geminiKey) {

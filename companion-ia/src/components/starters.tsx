@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
-import { type as typo, type Palette } from '../constants/design'
+import { type as typo, type Palette } from '../constants/type'
 
 // Amorces affichées sur une conversation neuve — elles remplissent le vide et
 // donnent un point de départ. Taper une carte pré-remplit le champ (pas d'envoi

@@ -9,7 +9,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter'
 import { configureNotifications } from '../lib/notifications'
-import { palettes } from '../constants/design'
+import { palettes } from '../constants/type'
 
 // Bouton de fermeture des écrans modaux (indispensable sur le web : pas de
 // swipe-to-dismiss). Présent à gauche du header de chaque modal.

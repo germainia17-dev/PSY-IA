@@ -20,7 +20,7 @@ import {
   WEEKDAYS,
   type Session,
 } from '../lib/notifications'
-import { palettes, type as typo } from '../constants/design'
+import { palettes, type as typo } from '../constants/type'
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const MINUTES = [0, 15, 30, 45]

@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router'
 import { getProUrl } from '../lib/api'
 import { usePro } from '../lib/use-pro'
 import { Confetti } from '../components/confetti'
-import { palettes, type as typo, type Palette } from '../constants/design'
+import { palettes, type as typo, type Palette } from '../constants/type'
 import { EXTERNAL_URLS } from '../constants/urls'
 
 export default function SettingsScreen() {

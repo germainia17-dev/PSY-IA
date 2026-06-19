@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
-import { type as typo, type Palette } from '../constants/design'
+import { type as typo, type Palette } from '../constants/type'
 import { SPRING } from '../constants/motion'
 import type { Message } from '../lib/storage'
 
@@ -66,15 +66,17 @@ export function ChatBubble({
     )
   }
 
-  // Bulle assistant : gradient diagonal presque invisible — le bord bas-droit
-  // imperceptiblement plus sombre donne la profondeur. Jamais plat.
+  // Bulle assistant : papier chaud, gradient diagonal presque invisible — du
+  // ton de bulle vers la surface du thème pour donner de la profondeur. Jamais
+  // plat. Hairline du thème pour décoller du fond.
+  void isDark
   return (
     <Animated.View style={[styles.assistantWrap, style]}>
       <LinearGradient
-        colors={isDark ? ['#1C1C20', '#161619'] : ['#F4F4F5', '#ECECEE']}
+        colors={[colors.bubbleAsst, colors.surface]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.bubble, styles.assistant]}>
+        style={[styles.bubble, styles.assistant, { borderWidth: 1, borderColor: colors.border }]}>
         <Text style={textStyle}>{message.content}</Text>
       </LinearGradient>
     </Animated.View>

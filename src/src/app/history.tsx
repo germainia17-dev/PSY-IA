@@ -19,7 +19,7 @@ import {
   setCurrentId,
   type ConversationMeta,
 } from '../lib/storage'
-import { palettes, type as typo } from '../constants/design'
+import { palettes, type as typo } from '../constants/type'
 
 function formatDate(ts: number): string {
   const d = new Date(ts)

@@ -1,6 +1,6 @@
 // Client du backend PSY-IA. Gère la session anonyme Supabase et le relais chat.
 import { supabase } from './supabase'
-import type { Message } from './storage'
+import { getPersonalization, type Message } from './storage'
 
 export type PlanInterval = 'weekly' | 'monthly' | 'annual'
 
@@ -55,13 +55,17 @@ function functionUrl(name: string): string {
 export async function sendChatMessage(messages: Message[], memory: string[] = []): Promise<ChatResult> {
   const { token } = await ensureSession()
 
+  // Ton de l'IA choisi dans la personnalisation (Pro). Lu ici pour que tout
+  // appelant en profite sans changer sa signature. `doux` = sans effet côté serveur.
+  const tone = await getPersonalization().then((p) => p.tone).catch(() => undefined)
+
   const response = await fetch(functionUrl('chat'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ messages, memory }),
+    body: JSON.stringify({ messages, memory, tone }),
   })
 
   const data = await response.json().catch(() => null)

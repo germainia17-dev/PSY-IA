@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
-import { type as typo, type Palette } from '../constants/design'
+import { type as typo, type Palette } from '../constants/type'
 import { SPRING } from '../constants/motion'
 import type { Message } from '../lib/storage'
 

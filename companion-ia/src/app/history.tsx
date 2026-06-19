@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -19,7 +18,8 @@ import {
   type ConversationMeta,
 } from '../lib/storage'
 import { confirm } from '../lib/confirm'
-import { palettes, type as typo } from '../constants/design'
+import { type as typo } from '../constants/type'
+import { useTheme } from '../hooks/use-theme'
 
 function formatDate(ts: number): string {
   const d = new Date(ts)
@@ -33,8 +33,7 @@ function formatDate(ts: number): string {
 }
 
 export default function HistoryScreen() {
-  const scheme = useColorScheme()
-  const colors = palettes[scheme === 'dark' ? 'dark' : 'light']
+  const colors = useTheme()
   const router = useRouter()
   const [items, setItems] = useState<ConversationMeta[]>([])
 

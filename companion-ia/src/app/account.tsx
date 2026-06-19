@@ -8,7 +8,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -16,11 +15,11 @@ import { useRouter } from 'expo-router'
 import { getLinkedEmail, linkEmail, signInWithEmail, signOut } from '../lib/auth'
 import { confirm, notify } from '../lib/confirm'
 import { supabase } from '../lib/supabase'
-import { palettes, type as typo } from '../constants/design'
+import { type as typo } from '../constants/type'
+import { useTheme } from '../hooks/use-theme'
 
 export default function AccountScreen() {
-  const scheme = useColorScheme()
-  const colors = palettes[scheme === 'dark' ? 'dark' : 'light']
+  const colors = useTheme()
   const router = useRouter()
 
   const [email, setEmail] = useState('')
@@ -225,5 +224,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 4,
   },
-  btnDestructive: { backgroundColor: '#c0392b', marginTop: 16 },
+  btnDestructive: { backgroundColor: '#A8331F', marginTop: 16 },
 })

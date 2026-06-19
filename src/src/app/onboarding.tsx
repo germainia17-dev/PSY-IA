@@ -11,7 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { Orb } from '../components/orb'
-import { palettes } from '../constants/design'
+import { palettes } from '../constants/type'
 import { SPRING } from '../constants/motion'
 
 export const ONBOARDED_KEY = 'companion.onboarded'

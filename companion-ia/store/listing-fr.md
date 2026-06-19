@@ -10,7 +10,7 @@ Companion — ton espace d'écoute
 Un compagnon qui t'écoute
 
 ## Description courte (Google Play, 80 car. max)
-Un compagnon IA bienveillant, disponible jour et nuit. Privé et chiffré.
+Un compagnon IA bienveillant, disponible jour et nuit. Sans compte.
 
 ## Description longue
 
@@ -20,8 +20,9 @@ Companion est un compagnon de conversation bienveillant, disponible à toute heu
 
 **Privé, par conception**
 • Aucun compte requis — tu ouvres l'app, c'est tout
-• Tes conversations restent sur ton appareil, jamais sur nos serveurs
-• Chiffré de bout en bout, sans publicité, sans traqueurs
+• Tes conversations sont stockées uniquement sur ton appareil
+• Chiffrées en transit (HTTPS) ; relayées à l'IA pour répondre, jamais journalisées
+• Sans publicité, sans traqueurs
 
 **Pensé pour le quotidien**
 • Une présence calme, incarnée par une orbe qui respire avec toi
@@ -52,7 +53,7 @@ Companion est un espace d'écoute et de bien-être, pas un service médical ni u
 ## Captures d'écran à fournir
 1. Onboarding (orbe + « Bonjour. Je suis là. »)
 2. Conversation en cours (mode sombre)
-3. Écran « chiffré de bout en bout » / paramètres confidentialité
+3. Écran paramètres / confidentialité
 4. Limite douce « On se retrouve demain ? »
 - iPhone 6.9" (1320×2868) et 6.5" (1284×2778) ; Android : téléphone + tablette 7"
 

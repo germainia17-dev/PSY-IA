@@ -5,18 +5,17 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { getProUrl, PRO_OFFERS, type PlanInterval } from '../lib/api'
 import { usePro } from '../lib/use-pro'
 import { Confetti } from '../components/confetti'
-import { palettes, type as typo } from '../constants/design'
+import { type as typo } from '../constants/type'
+import { useTheme } from '../hooks/use-theme'
 
 export default function PaywallScreen() {
-  const scheme = useColorScheme()
-  const colors = palettes[scheme === 'dark' ? 'dark' : 'light']
+  const colors = useTheme()
   const [showConfetti, setShowConfetti] = useState(false)
   const proPoll = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { refresh } = usePro(() => setShowConfetti(true))
