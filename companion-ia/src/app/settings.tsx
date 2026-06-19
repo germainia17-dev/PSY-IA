@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { cancelSubscription } from '../lib/api'
@@ -51,116 +53,128 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Section label="Mon compte" colors={colors}>
-          <NavRow
-            icon="👤"
-            title="Compte"
-            subtitle={linkedEmail ?? 'Anonyme · sauvegarde ton compte →'}
-            colors={colors}
-            onPress={() => router.push('/account')}
-          />
-        </Section>
+
+        {/* Profile card */}
+        <Pressable
+          style={({ pressed }) => [styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}
+          onPress={() => router.push('/account')}>
+          <View style={[styles.profileAvatar, { backgroundColor: colors.accent }]}>
+            <Text style={[styles.profileInitial, { color: colors.accentTx }]}>
+              {linkedEmail ? linkedEmail[0].toUpperCase() : '✦'}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[typo.label as object, { color: colors.text }]}>
+              {linkedEmail ?? 'Sans compte'}
+            </Text>
+            <Text style={[typo.caption as object, { color: colors.textMuted, marginTop: 1 }]}>
+              {linkedEmail ? 'Compte lié · sauvegarde active' : 'Anonyme · sauvegarde ton compte →'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+        </Pressable>
 
         <Section label="Ton compagnon" colors={colors}>
           <NavRow
-            icon="✨"
+            icon="compass-outline"
             title="Mon parcours"
             subtitle="Ta série de présence et ton humeur"
             colors={colors}
             onPress={() => router.push('/journey')}
           />
-          <Divider colors={colors} />
           <NavRow
-            icon="🎨"
+            icon="color-palette-outline"
             title="Personnalisation"
             subtitle="Logo, couleurs · thèmes & ton ✦ Pro"
             colors={colors}
             onPress={() => router.push('/personalization')}
           />
-          <Divider colors={colors} />
           <NavRow
-            icon="🧠"
+            icon="library-outline"
             title="Mémoire"
             subtitle="Ce que Companion retient de toi"
             colors={colors}
             onPress={() => router.push('/memory')}
           />
-          <Divider colors={colors} />
           <NavRow
-            icon="🗓️"
+            icon="calendar-outline"
             title="Séances programmées"
             subtitle="Des rappels doux pour prendre un moment"
             colors={colors}
             onPress={() => router.push('/sessions')}
           />
-          <Divider colors={colors} />
           <NavRow
-            icon="🕘"
+            icon="chatbubbles-outline"
             title="Conversations"
             subtitle="Ton historique d'échanges"
             colors={colors}
             onPress={() => router.push('/history')}
+            last
           />
         </Section>
 
-        <Section label="Feedback & Sondages" colors={colors}>
+        {/* Pro CTA or Pro status */}
+        {pro ? (
+          <Section label="Ton forfait" colors={colors}>
+            <View style={styles.row}>
+              <Text style={[typo.label as object, { color: colors.text }]}>Companion Pro ✦</Text>
+              <Text style={[typo.caption as object, { color: colors.accent }]}>actif</Text>
+            </View>
+            <Text style={[typo.caption as object, { color: colors.textMuted }]}>
+              Conversations illimitées. Merci de soutenir Companion.
+            </Text>
+            <TouchableOpacity onPress={confirmCancel} hitSlop={8}>
+              <Text style={[typo.caption as object, { color: colors.textMuted, textDecorationLine: 'underline' }]}>
+                Annuler mon abonnement
+              </Text>
+            </TouchableOpacity>
+          </Section>
+        ) : (
+          <Pressable onPress={() => router.push('/paywall')} style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}>
+            <LinearGradient
+              colors={[colors.accent, '#8B4A1E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.proCta}>
+              <View style={[styles.proCtaIcon, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+                <Ionicons name="diamond-outline" size={22} color="white" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.proCtaTitle}>Passe à Companion Pro</Text>
+                <Text style={styles.proCtaSub}>Conversations illimitées · personnalisation</Text>
+              </View>
+              <Text style={styles.proCtaChevron}>›</Text>
+            </LinearGradient>
+          </Pressable>
+        )}
+
+        <Section label="Support" colors={colors}>
           <NavRow
-            icon="📋"
+            icon="star-outline"
             title="Sondage PSY"
             subtitle="Aide-nous à mieux te comprendre (2-3 min)"
             colors={colors}
             onPress={() => Linking.openURL(EXTERNAL_URLS.psySurvey)}
           />
-        </Section>
-
-        <Section label="Confidentialité" colors={colors}>
-          <Text style={[typo.message as object, { color: colors.text }]}>
-            Tes conversations restent entre toi et ton compagnon.
-          </Text>
-          <Text style={[typo.caption as object, { color: colors.textMuted }]}>
-            Tes conversations sont synchronisées de façon sécurisée (HTTPS) pour rester accessibles
-            sur tous tes appareils. La mémoire reste uniquement sur cet appareil. Aucun traqueur.
-          </Text>
-        </Section>
-
-        <Section label="Ton forfait" colors={colors}>
-          {pro ? (
-            <>
-              <View style={styles.row}>
-                <Text style={[typo.label as object, { color: colors.text }]}>Companion Pro ✦</Text>
-                <Text style={[typo.caption as object, { color: colors.accent }]}>actif</Text>
-              </View>
-              <Text style={[typo.caption as object, { color: colors.textMuted }]}>
-                Conversations illimitées. Merci de soutenir Companion.
-              </Text>
-              <TouchableOpacity onPress={confirmCancel} hitSlop={8}>
-                <Text style={[typo.caption as object, { color: colors.textMuted, textDecorationLine: 'underline' }]}>
-                  Annuler mon abonnement
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <View style={styles.row}>
-                <Text style={[typo.label as object, { color: colors.text }]}>Gratuit</Text>
-                <Text style={[typo.caption as object, { color: colors.textMuted }]}>10 messages / jour</Text>
-              </View>
-              <TouchableOpacity style={[styles.proBtn, { backgroundColor: colors.accent }]} activeOpacity={0.85} onPress={() => router.push('/paywall')}>
-                <Text style={[typo.button as object, { color: colors.accentTx }]}>Passer à Companion Pro</Text>
-              </TouchableOpacity>
-              <Text style={[typo.caption as object, { color: colors.textMuted, textAlign: 'center' }]}>
-                Conversations illimitées · sans publicité
-              </Text>
-            </>
-          )}
+          <NavRow
+            icon="shield-checkmark-outline"
+            title="Confidentialité"
+            subtitle="Tes données restent entre toi et Companion"
+            colors={colors}
+            onPress={() => {}}
+            last
+          />
         </Section>
 
         <Section label="En cas de besoin urgent" colors={colors}>
-          <Text style={[typo.caption as object, { color: colors.textMuted }]}>
+          <Text style={[typo.caption as object, { color: colors.textMuted, lineHeight: 18 }]}>
             Companion est un soutien, pas un service médical. Si tu traverses un moment très
-            difficile, le 3114 (gratuit, 24h/24) est là pour toi.
+            difficile, le{' '}
+            <Text style={{ color: colors.error, fontFamily: 'Inter_600SemiBold' }}>3114</Text>
+            {' '}(gratuit, 24h/24) est là pour toi.
           </Text>
         </Section>
+
       </ScrollView>
 
       <Confetti visible={showConfetti} onDone={() => setShowConfetti(false)} />
@@ -171,7 +185,10 @@ export default function SettingsScreen() {
 function Section({ label, children, colors }: { label: string; children: React.ReactNode; colors: Palette }) {
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionLabel, { color: colors.textFaint }]}>{label.toUpperCase()}</Text>
+      <View style={styles.sectionLabelRow}>
+        <View style={[styles.sectionDot, { backgroundColor: colors.accent }]} />
+        <Text style={[styles.sectionLabel, { color: colors.textFaint }]}>{label.toUpperCase()}</Text>
+      </View>
       <View style={[styles.sectionBody, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         {children}
       </View>
@@ -185,41 +202,94 @@ function NavRow({
   subtitle,
   colors,
   onPress,
+  last,
 }: {
-  icon: string
+  icon: React.ComponentProps<typeof Ionicons>['name']
   title: string
   subtitle: string
   colors: Palette
   onPress: () => void
+  last?: boolean
 }) {
   return (
-    <Pressable style={({ pressed }) => [styles.navRow, { opacity: pressed ? 0.6 : 1 }]} onPress={onPress}>
-      <Text style={{ fontSize: 20 }}>{icon}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={[typo.label as object, { color: colors.text }]}>{title}</Text>
-        <Text style={[typo.caption as object, { color: colors.textMuted }]}>{subtitle}</Text>
-      </View>
-      <Text style={{ color: colors.textFaint, fontSize: 18 }}>›</Text>
-    </Pressable>
+    <>
+      <Pressable style={({ pressed }) => [styles.navRow, { opacity: pressed ? 0.6 : 1 }]} onPress={onPress}>
+        <View style={[styles.iconWrap, { backgroundColor: colors.accentSoft }]}>
+          <Ionicons name={icon} size={18} color={colors.accent} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[typo.label as object, { color: colors.text }]}>{title}</Text>
+          <Text style={[typo.caption as object, { color: colors.textMuted }]}>{subtitle}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={14} color={colors.textFaint} />
+      </Pressable>
+      {!last && <View style={[styles.separator, { backgroundColor: colors.border, marginLeft: 62 }]} />}
+    </>
   )
-}
-
-function Divider({ colors }: { colors: Palette }) {
-  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 4 }} />
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  scroll: { padding: 20, gap: 24, paddingBottom: 40 },
-  section: { gap: 8 },
-  sectionLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, marginLeft: 4 },
-  sectionBody: { borderRadius: 16, padding: 16, gap: 10, borderWidth: StyleSheet.hairlineWidth },
-  navRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  proBtn: {
-    height: 48,
-    borderRadius: 24,
+  scroll: { padding: 16, gap: 20, paddingBottom: 40 },
+
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#1A0A03',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  profileAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  profileInitial: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+
+  section: { gap: 8 },
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 4 },
+  sectionDot: { width: 5, height: 5, borderRadius: 3 },
+  sectionLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.2 },
+  sectionBody: {
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#1A0A03',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+
+  navRow: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 11 },
+  iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  iconText: { fontSize: 17 },
+  separator: { height: StyleSheet.hairlineWidth },
+
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+  proCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#C77A4A',
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  proCtaIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  proCtaTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: 'white', letterSpacing: -0.1 },
+  proCtaSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  proCtaChevron: { color: 'rgba(255,255,255,0.8)', fontSize: 20 },
 })

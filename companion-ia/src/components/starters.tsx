@@ -1,21 +1,31 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View, Text } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
+import { Ionicons } from '@expo/vector-icons'
 import { type as typo, type Palette } from '../constants/type'
 
-// Amorces affichées sur une conversation neuve — elles remplissent le vide et
-// donnent un point de départ. Taper une carte pré-remplit le champ (pas d'envoi
-// direct : l'utilisateur garde la main sur ses mots).
-export const STARTERS = [
-  { icon: '🌤️', title: 'Ma journée', subtitle: "Raconte comment elle s'est passée", prefill: "Aujourd'hui, " },
-  { icon: '💡', title: 'Mes idées', subtitle: 'Note ce qui te trotte en tête', prefill: "J'ai une idée : " },
-  { icon: '🗓️', title: 'Ce qui est prévu', subtitle: 'Ce que tu as devant toi', prefill: 'Cette semaine, je dois ' },
-  { icon: '🫧', title: 'Comment je me sens', subtitle: 'Mets des mots dessus', prefill: 'Là, je me sens ' },
-] as const
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name']
+
+const STARTERS: {
+  icon: IoniconsName
+  title: string
+  subtitle: string
+  prefill: string
+}[] = [
+  { icon: 'partly-sunny-outline', title: 'Ma journée',         subtitle: "Raconte comment elle s'est passée", prefill: "Aujourd'hui, " },
+  { icon: 'bulb-outline',         title: 'Mes idées',          subtitle: 'Note ce qui te trotte en tête',    prefill: "J'ai une idée : " },
+  { icon: 'calendar-outline',     title: 'Ce qui est prévu',   subtitle: 'Ce que tu as devant toi',          prefill: 'Cette semaine, je dois ' },
+  { icon: 'heart-outline',        title: 'Comment je me sens', subtitle: 'Mets des mots dessus',             prefill: 'Là, je me sens ' },
+]
+
+export { STARTERS }
 
 export function Starters({ colors, onPick }: { colors: Palette; onPick: (prefill: string) => void }) {
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.label, { color: colors.textFaint }]}>PAR QUOI COMMENCER ?</Text>
+      <View style={styles.labelRow}>
+        <View style={[styles.labelDot, { backgroundColor: colors.accent }]} />
+        <Text style={[styles.label, { color: colors.textFaint }]}>PAR OÙ COMMENCER ?</Text>
+      </View>
       <View style={styles.grid}>
         {STARTERS.map((s, i) => (
           <Animated.View key={s.title} entering={FadeInDown.delay(120 + i * 70).springify().damping(18)} style={styles.cell}>
@@ -23,9 +33,11 @@ export function Starters({ colors, onPick }: { colors: Palette; onPick: (prefill
               onPress={() => onPick(s.prefill)}
               style={({ pressed }) => [
                 styles.card,
-                { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.65 : 1 },
+                { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 },
               ]}>
-              <Text style={styles.icon}>{s.icon}</Text>
+              <View style={[styles.iconWrap, { backgroundColor: colors.accentSoft }]}>
+                <Ionicons name={s.icon} size={20} color={colors.accent} />
+              </View>
               <Text style={[typo.label as object, { color: colors.text }]}>{s.title}</Text>
               <Text style={[typo.caption as object, { color: colors.textMuted }]} numberOfLines={2}>
                 {s.subtitle}
@@ -39,16 +51,28 @@ export function Starters({ colors, onPick }: { colors: Palette; onPick: (prefill
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: 28, gap: 12 },
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, marginLeft: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  wrap: { marginTop: 24, gap: 12 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 2 },
+  labelDot: { width: 5, height: 5, borderRadius: 3 },
+  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1.2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   cell: { width: '47%', flexGrow: 1 },
   card: {
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
     padding: 16,
-    gap: 6,
-    minHeight: 112,
+    gap: 8,
+    minHeight: 126,
+    shadowColor: '#1A0A03',
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  icon: { fontSize: 24, marginBottom: 2 },
+  iconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 })

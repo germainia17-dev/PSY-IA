@@ -130,9 +130,9 @@ export default function OnboardingScreen() {
                 onPress={() => setIntent(active ? null : i.id)}
                 style={[
                   styles.intentChip,
-                  { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accent : colors.surface },
+                  { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.surface },
                 ]}>
-                <Text style={{ color: active ? colors.bg : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 14 }}>
+                <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 14 }}>
                   {i.label}
                 </Text>
               </Pressable>
@@ -189,8 +189,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   button: {
-    height: 54,
-    borderRadius: 16,
+    height: 52,
+    borderRadius: 26,
     alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
