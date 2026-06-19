@@ -48,7 +48,7 @@ export default function PaywallScreen() {
 
         {/* Hero */}
         <LinearGradient
-          colors={['#C77A4A', '#8B3A12', '#5C2008']}
+          colors={['#E8B8A0', '#D9956B', '#C77A4A']}
           start={{ x: 0.2, y: 0 }}
           end={{ x: 0.8, y: 1 }}
           style={styles.hero}>
@@ -78,7 +78,7 @@ export default function PaywallScreen() {
               onPress={() => openPro(offer.interval)}
               style={[
                 styles.card,
-                { backgroundColor: offer.highlight ? 'white' : colors.surface, borderColor: offer.highlight ? colors.accent : colors.border },
+                { backgroundColor: offer.highlight ? colors.accentSoft : colors.surface, borderColor: colors.border },
                 offer.highlight && styles.cardHighlight,
               ]}>
               {offer.sublabel ? (
@@ -106,7 +106,7 @@ export default function PaywallScreen() {
                 </Text>
               )}
               <View style={styles.priceRow}>
-                <Text style={[styles.price, { color: offer.highlight ? colors.accent : colors.text }]}>
+                <Text style={[styles.price, { color: colors.accent }]}>
                   {offer.price}
                 </Text>
                 <Text style={[typo.caption as object, { color: colors.textMuted }]}>
@@ -151,6 +151,10 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingHorizontal: 20,
     gap: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 28,
+    overflow: 'hidden',
   },
   heroTitle: {
     fontSize: 26,
