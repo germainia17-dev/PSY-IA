@@ -260,6 +260,9 @@ export default function ChatScreen() {
         <Pressable onPress={() => router.push('/history')} style={styles.iconBtn} hitSlop={8}>
           <Ionicons name="time-outline" size={20} color={colors.textMuted} />
         </Pressable>
+        <Pressable onPress={() => router.push('/evolution' as never)} style={styles.iconBtn} hitSlop={8}>
+          <Ionicons name="trending-up-outline" size={20} color={colors.textMuted} />
+        </Pressable>
         <Pressable onPress={() => router.push('/settings')} style={styles.iconBtn} hitSlop={8}>
           <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
         </Pressable>

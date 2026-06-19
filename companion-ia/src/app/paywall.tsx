@@ -100,6 +100,11 @@ export default function PaywallScreen() {
               <Text style={[typo.label as object, { color: colors.text, marginTop: 8 }]}>
                 {offer.label}
               </Text>
+              {offer.originalPrice && (
+                <Text style={[styles.strikethruPrice, { color: colors.textMuted }]}>
+                  {offer.originalPrice}
+                </Text>
+              )}
               <View style={styles.priceRow}>
                 <Text style={[styles.price, { color: offer.highlight ? colors.accent : colors.text }]}>
                   {offer.price}
@@ -212,6 +217,7 @@ const styles = StyleSheet.create({
   },
   badgePlaceholder: { height: 22 },
   badgeText: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  strikethruPrice: { fontSize: 12, fontFamily: 'Inter_400Regular', textDecorationLine: 'line-through', marginTop: 2 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 2 },
   price: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
   btnGradient: {

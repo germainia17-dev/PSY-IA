@@ -5,20 +5,21 @@ import { getPersonalization, type Message } from './storage'
 export type PlanInterval = 'weekly' | 'monthly' | 'annual'
 
 const STRIPE_LINKS: Record<PlanInterval, string> = {
-  weekly:  'https://buy.stripe.com/8x2aEWajabDCfQi567frW05',
-  monthly: 'https://buy.stripe.com/cNi28q1ME5fedIadCDfrW06',
-  annual:  'https://buy.stripe.com/dRm9ASdvm9vucE6fKLfrW07',
+  weekly:  'https://buy.stripe.com/4gMbJ04YQbDCdIa423frW08',
+  monthly: 'https://buy.stripe.com/3cIaEWdvmazy8nQ423frW09',
+  annual:  'https://buy.stripe.com/bJefZg62UdLK0VogOPfrW0a',
 }
 
 export const PRO_OFFERS: {
   interval: PlanInterval
   label: string
   price: string
+  originalPrice?: string
   period: string
   sublabel?: string
   highlight?: boolean
 }[] = [
-  { interval: 'weekly',  label: 'Hebdomadaire', price: '2,99€', period: '/ semaine' },
+  { interval: 'weekly',  label: 'Hebdomadaire', price: '2,99€', originalPrice: '3,99€', period: '/ semaine', sublabel: 'OFFRE BIENVENUE -25%' },
   { interval: 'monthly', label: 'Mensuel',      price: '7,99€', period: '/ mois',   sublabel: 'LE + POPULAIRE', highlight: true },
   { interval: 'annual',  label: 'Annuel',       price: '49,99€', period: '/ an',    sublabel: '-48%' },
 ]

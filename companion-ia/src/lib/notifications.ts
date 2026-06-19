@@ -39,6 +39,7 @@ const REMINDERS = [
 // rappel doux proposé au bon moment.
 const DAILY_KEY = '@companion_daily_reminder' // id de la notif planifiée
 const ASKED_KEY = '@companion_reminder_asked' // a-t-on déjà proposé le rappel ?
+const EVOLUTION_KEY = '@companion_evolution_reminder' // notification évolution vendredi 19h
 
 let configured = false
 
@@ -147,6 +148,29 @@ export async function reminderAsked(): Promise<boolean> {
 
 export async function markReminderAsked(): Promise<void> {
   await AsyncStorage.setItem(ASKED_KEY, '1')
+}
+
+// ── Notification d'évolution (vendredi 19h) ──────────────────────────────────
+
+export async function enableEvolutionReminder(): Promise<boolean> {
+  if (Platform.OS === 'web' || !(await ensurePermission())) return false
+  if (await AsyncStorage.getItem(EVOLUTION_KEY)) return true // déjà actif
+  const id = await Notifications.scheduleNotificationAsync({
+    content: { title: 'Ton évolution de la semaine 📈', body: 'Découvre comment tu as progressé cette semaine.' },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 6, hour: 19, minute: 0 },
+  })
+  await AsyncStorage.setItem(EVOLUTION_KEY, id)
+  return true
+}
+
+export async function disableEvolutionReminder(): Promise<void> {
+  const id = await AsyncStorage.getItem(EVOLUTION_KEY)
+  if (id) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {})
+  await AsyncStorage.removeItem(EVOLUTION_KEY)
+}
+
+export async function isEvolutionReminderOn(): Promise<boolean> {
+  return (await AsyncStorage.getItem(EVOLUTION_KEY)) !== null
 }
 
 export function formatTime(hour: number, minute: number): string {
