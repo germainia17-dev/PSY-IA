@@ -39,7 +39,7 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
 const MAX_HISTORY = 20 // derniers messages envoyés au modèle
 const MAX_MESSAGE_LENGTH = 4000
 const MAX_MEMORY_FACTS = 40
-const DAILY_LIMIT = 50 // bêta : large pour ne pas bloquer le feedback. Remettre à 10 avant le campus.
+const DAILY_LIMIT = 20
 
 type Msg = { role: 'user' | 'assistant'; content: string }
 
