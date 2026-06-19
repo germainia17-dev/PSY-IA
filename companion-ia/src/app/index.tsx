@@ -42,6 +42,7 @@ import { Orb, type OrbState } from '../components/orb'
 import { Starters } from '../components/starters'
 import { Confetti } from '../components/confetti'
 import { ONBOARDED_KEY } from './onboarding'
+import { Ionicons } from '@expo/vector-icons'
 
 // Haptiques : ponctuation, pas vibration permanente.
 // Jamais sur scroll, frappe ou respiration de l'orbe.
@@ -249,18 +250,18 @@ export default function ChatScreen() {
             onPress={() => router.push('/journey')}
             hitSlop={8}
             style={[styles.streakPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={{ fontSize: 13 }}>🔥</Text>
+            <Ionicons name="flame" size={13} color={colors.accent} />
             <Text style={{ color: colors.text, fontFamily: 'Inter_600SemiBold', fontSize: 13 }}>{streak}</Text>
           </Pressable>
         ) : null}
         <Pressable onPress={handleNew} style={styles.iconBtn} hitSlop={8}>
-          <Text style={{ fontSize: 22, color: colors.textMuted }}>＋</Text>
+          <Ionicons name="add" size={22} color={colors.textMuted} />
         </Pressable>
         <Pressable onPress={() => router.push('/history')} style={styles.iconBtn} hitSlop={8}>
-          <Text style={{ fontSize: 18, color: colors.textMuted }}>🕘</Text>
+          <Ionicons name="time-outline" size={20} color={colors.textMuted} />
         </Pressable>
         <Pressable onPress={() => router.push('/settings')} style={styles.iconBtn} hitSlop={8}>
-          <Text style={{ fontSize: 20, color: colors.textMuted }}>⚙</Text>
+          <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
         </Pressable>
       </View>
 
