@@ -18,10 +18,17 @@ export default function MemoryScreen() {
   const colors = useTheme()
   const [facts, setFacts] = useState<MemoryFact[]>([])
 
+  const refreshMemory = useCallback(async () => {
+    setFacts(await getMemory())
+  }, [])
+
   useFocusEffect(
     useCallback(() => {
-      getMemory().then(setFacts)
-    }, []),
+      refreshMemory()
+      // Recharger après délai pour couvrir l'extraction asynchrone en cours
+      const timer = setTimeout(refreshMemory, 3000)
+      return () => clearTimeout(timer)
+    }, [refreshMemory]),
   )
 
   async function remove(id: string) {

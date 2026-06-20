@@ -92,8 +92,13 @@ export default function PersonalizationScreen() {
     } else {
       // Nom unique = busting du cache Image de React Native à chaque changement.
       const dest = `${FileSystem.documentDirectory}companion-logo-${Date.now()}.jpg`
-      await FileSystem.copyAsync({ from: asset.uri, to: dest })
-      uri = dest
+      try {
+        await FileSystem.copyAsync({ from: asset.uri, to: dest })
+        uri = dest
+      } catch (err) {
+        console.error('Failed to copy logo:', err)
+        return
+      }
     }
 
     await deletePrevLogoFile()

@@ -246,6 +246,13 @@ Deno.serve(async (req) => {
   if (geminiKey) {
     try {
       const text = await callGemini(messages, geminiKey, system)
+      // Update last_message_at for daily push tracking
+      supabase
+        .from('profiles')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('user_id', userData.user.id)
+        .then()
+        .catch(() => {})
       return json({ text, remaining })
     } catch (err) {
       errors.push(String(err))
@@ -256,6 +263,13 @@ Deno.serve(async (req) => {
   if (anthropicKey) {
     try {
       const text = await callAnthropic(messages, anthropicKey, system)
+      // Update last_message_at for daily push tracking
+      supabase
+        .from('profiles')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('user_id', userData.user.id)
+        .then()
+        .catch(() => {})
       return json({ text, remaining })
     } catch (err) {
       errors.push(String(err))

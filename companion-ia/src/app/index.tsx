@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Redirect, useFocusEffect, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { sendChatMessage, extractMemory, ChatError } from '../lib/api'
+import { sendChatMessage, extractMemory, ChatError, isPro, PRO_OFFERS } from '../lib/api'
 import { usePro } from '../lib/use-pro'
 import {
   addMemoryFacts,
@@ -41,6 +41,7 @@ import { ChatBubble } from '../components/chat-bubble'
 import { Orb, type OrbState } from '../components/orb'
 import { Starters } from '../components/starters'
 import { Confetti } from '../components/confetti'
+import { PromoModal } from '../components/PromoModal'
 import { ONBOARDED_KEY } from './onboarding'
 import { Ionicons } from '@expo/vector-icons'
 
@@ -48,9 +49,16 @@ import { Ionicons } from '@expo/vector-icons'
 // Jamais sur scroll, frappe ou respiration de l'orbe.
 function haptic(kind: 'send' | 'receive' | 'limit') {
   if (Platform.OS === 'web') return
-  if (kind === 'send') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-  else if (kind === 'receive') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
-  else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+  if (kind === 'send') {
+    // Envoi : court et léger (le message part)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+  } else if (kind === 'receive') {
+    // Réception : plus marqué et distinct (la réponse arrive)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+  } else if (kind === 'limit') {
+    // Limite atteinte : notification d'avertissement
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+  }
 }
 
 // Échelle d'humeur (index 0 → valeur 1). Un seul tap, sur conversation neuve.
@@ -72,14 +80,23 @@ export default function ChatScreen() {
   const [askReminder, setAskReminder] = useState(false)
   const [todayMood, setTodayMoodState] = useState<number | null>(null)
   const [streak, setStreak] = useState(0)
+  const [showPromo, setShowPromo] = useState(false)
   const listRef = useRef<FlatList>(null)
   const inputRef = useRef<TextInput>(null)
   const animateFrom = useRef(0) // index à partir duquel les bulles s'animent
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const promoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((v) => setOnboarded(v === '1'))
+    // Show promo modal 2 seconds after app launch if not shown and not pro
+    promoTimer.current = setTimeout(async () => {
+      const shown = await AsyncStorage.getItem('@companion_promo_shown')
+      const pro = await isPro()
+      if (!shown && !pro) setShowPromo(true)
+    }, 2000)
     return () => {
       if (speakTimer.current) clearTimeout(speakTimer.current)
+      if (promoTimer.current) clearTimeout(promoTimer.current)
     }
   }, [])
 
@@ -400,6 +417,16 @@ export default function ChatScreen() {
       </KeyboardAvoidingView>
 
       <Confetti visible={showConfetti} onDone={() => setShowConfetti(false)} />
+
+      <PromoModal
+        visible={showPromo}
+        onDismiss={async () => {
+          setShowPromo(false)
+          await AsyncStorage.setItem('@companion_promo_shown', '1')
+        }}
+        colors={colors}
+        offers={PRO_OFFERS.slice(0, 2).map((o) => ({ label: o.label, price: `${o.price}${o.period}` }))}
+      />
     </SafeAreaView>
   )
 }

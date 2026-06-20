@@ -1,6 +1,7 @@
-// Re-engagement email — appelé chaque soir à 18h UTC par le scheduler Supabase.
+// Re-engagement email + push — appelé chaque soir à 18h UTC par le scheduler Supabase.
 // Trouve les utilisateurs qui n'ont pas ouvert l'app depuis 24-72h et leur
-// envoie un email chaleureux. Utilise Resend (RESEND_API_KEY) pour l'envoi.
+// envoie un email chaleureux + une notification push (si disponible).
+// Utilise Resend pour l'email et Expo Push API pour les notifications.
 //
 // Variables d'environnement requises (Supabase Secrets) :
 //   RESEND_API_KEY      — clé API Resend (resend.com, gratuit jusqu'à 3 000/mois)
@@ -129,6 +130,27 @@ async function sendEmail(
   return true
 }
 
+async function sendPush(pushToken: string): Promise<boolean> {
+  const expoPushUrl = 'https://exp.host/--/api/v2/push/send'
+  const res = await fetch(expoPushUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: pushToken,
+      title: 'Ton compagnon pense à toi',
+      body: 'Tu m\'as manqué. Comment tu vas ?',
+      sound: 'default',
+    }),
+    signal: AbortSignal.timeout(5000),
+  })
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.status.toString())
+    console.error(`Expo Push error: ${err}`)
+    return false
+  }
+  return true
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders })
@@ -183,11 +205,10 @@ Deno.serve(async (req) => {
   const sentIds: string[] = []
 
   for (let i = 0; i < targets.length; i++) {
-    const { user_id, email } = targets[i]
-    if (!email) continue
-    const subject = pickSubject(i)
-    const ok = await sendEmail(email, subject, html, text, resendKey, emailFrom)
-    if (ok) sentIds.push(user_id)
+    const { user_id, email, push_token } = targets[i]
+    const emailSent = email ? await sendEmail(email, pickSubject(i), html, text, resendKey, emailFrom) : false
+    const pushSent = push_token ? await sendPush(push_token) : false
+    if (emailSent || pushSent) sentIds.push(user_id)
   }
 
   // Marque les envois réussis pour ne pas les re-contacter dans 3 jours.

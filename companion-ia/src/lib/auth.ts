@@ -13,7 +13,7 @@ export async function linkEmail(email: string): Promise<void> {
 export async function signInWithEmail(email: string): Promise<void> {
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: 'companion://auth/callback' },
+    options: { emailRedirectTo: 'companionia://auth/callback' },
   })
   if (error) throw error
 }

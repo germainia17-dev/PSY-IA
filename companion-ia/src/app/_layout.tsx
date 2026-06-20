@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Stack, useRouter } from 'expo-router'
 import { Linking, Platform, Pressable, Text } from 'react-native'
+import * as Notifications from 'expo-notifications'
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -13,6 +14,25 @@ import { handleAuthRedirect } from '../lib/auth'
 import { pullConversations, syncConversations } from '../lib/sync'
 import { supabase } from '../lib/supabase'
 import { ThemeProvider, useTheme } from '../lib/theme'
+
+async function registerPushToken() {
+  if (Platform.OS === 'web') return
+  try {
+    const { granted } = await Notifications.getPermissionsAsync()
+    if (!granted) return
+    const { data: session } = await supabase.auth.getSession()
+    if (!session.session) return
+    const token = await Notifications.getExpoPushTokenAsync({
+      projectId: '1e6a4e01-368e-4b5e-b7aa-1c6bc0aa4c2f',
+    })
+    await supabase
+      .from('profiles')
+      .update({ push_token: token.data })
+      .eq('user_id', session.session.user.id)
+  } catch (err) {
+    console.error('Failed to register push token:', err)
+  }
+}
 
 // Bouton de fermeture des écrans modaux (indispensable sur le web : pas de
 // swipe-to-dismiss). Présent à gauche du header de chaque modal.
@@ -38,6 +58,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     configureNotifications()
+    registerPushToken()
 
     // Sync des conversations si une session existe au démarrage
     supabase.auth.getSession().then(({ data }) => {

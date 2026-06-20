@@ -14,14 +14,15 @@ alter table public.profiles
 -- SECURITY DEFINER + grant service_role only : cette fonction lit auth.users,
 -- qui est inaccessible en dehors du service role.
 create or replace function public.get_re_engagement_targets()
-returns table(user_id uuid, email text)
+returns table(user_id uuid, email text, push_token text)
 language sql
 security definer
 set search_path = public
 as $$
   select distinct on (a.id)
     a.id as user_id,
-    a.email
+    a.email,
+    p.push_token
   from auth.users a
   join public.profiles p on p.user_id = a.id
   where

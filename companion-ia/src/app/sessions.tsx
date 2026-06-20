@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import {
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -73,8 +74,17 @@ export default function SessionsScreen() {
   }
 
   async function remove(id: string) {
-    await removeSession(id)
-    setSessions(await getSessions())
+    Alert.alert('Supprimer cette séance ?', 'Tu ne recevras plus de rappels à cette heure.', [
+      { text: 'Garder', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: async () => {
+          await removeSession(id)
+          setSessions(await getSessions())
+        },
+      },
+    ])
   }
 
   if (Platform.OS === 'web') {

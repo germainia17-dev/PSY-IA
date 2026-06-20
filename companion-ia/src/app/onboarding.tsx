@@ -17,22 +17,28 @@ import { addMemoryFacts, setUserName } from '../lib/storage'
 
 export const ONBOARDED_KEY = 'companion.onboarded'
 
-// Pourquoi la personne ouvre l'app. Capté ici, réinjecté dans la mémoire AVANT
-// le premier message → l'IA sait déjà ce qui l'amène.
 const INTENTS = [
   { id: 'stress', label: 'Évacuer du stress' },
   { id: 'sommeil', label: 'Mieux dormir' },
-  { id: 'motivation', label: 'Retrouver de l’élan' },
+  { id: 'motivation', label: 'Retrouver de l\'élan' },
   { id: 'parler', label: 'Juste parler' },
 ] as const
 
-// Premier contact. Fond sombre quel que soit le thème : on naît dans le calme.
-// Timeline : orbe (naissance, spring + haptique) → titre → sous-titre → bouton.
+const STATUSES = [
+  { id: 'student', label: 'Étudiant·e' },
+  { id: 'working', label: 'En activité' },
+  { id: 'entrepreneur', label: 'Commerce / Auto-entrepreneur' },
+  { id: 'seeking', label: 'En recherche' },
+  { id: 'other', label: 'Autre' },
+] as const
+
 export default function OnboardingScreen() {
   const router = useRouter()
   const colors = palettes.dark
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0)
   const [pressed, setPressed] = useState(false)
   const [name, setName] = useState('')
+  const [status, setStatus] = useState<string | null>(null)
   const [intent, setIntent] = useState<string | null>(null)
 
   const orbScale = useSharedValue(0)
@@ -40,12 +46,10 @@ export default function OnboardingScreen() {
   const titleY = useSharedValue(12)
   const subOp = useSharedValue(0)
   const subY = useSharedValue(10)
-  const btnOp = useSharedValue(0)
-  const btnY = useSharedValue(16)
-  const btnScale = useSharedValue(1)
+  const contentOp = useSharedValue(0)
+  const contentY = useSharedValue(16)
 
   useEffect(() => {
-    // Naissance de l'orbe — la seule fois où il apparaît de nulle part
     orbScale.value = withDelay(300, withSpring(1, { damping: 14, stiffness: 110, mass: 1.2 }))
     const t = setTimeout(() => {
       if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -55,11 +59,11 @@ export default function OnboardingScreen() {
     titleY.value = withDelay(900, withSpring(0, SPRING.soft))
     subOp.value = withDelay(1300, withTiming(1, { duration: 500 }))
     subY.value = withDelay(1300, withSpring(0, SPRING.soft))
-    btnOp.value = withDelay(1900, withTiming(1, { duration: 400 }))
-    btnY.value = withDelay(1900, withSpring(0, SPRING.soft))
+    contentOp.value = withDelay(1900, withTiming(1, { duration: 400 }))
+    contentY.value = withDelay(1900, withSpring(0, SPRING.soft))
 
     return () => clearTimeout(t)
-  }, [])
+  }, [step])
 
   const orbStyle = useAnimatedStyle(() => ({ transform: [{ scale: orbScale.value }] }))
   const titleStyle = useAnimatedStyle(() => ({
@@ -70,22 +74,23 @@ export default function OnboardingScreen() {
     opacity: subOp.value,
     transform: [{ translateY: subY.value }],
   }))
-  const btnStyle = useAnimatedStyle(() => ({
-    opacity: btnOp.value,
-    transform: [{ translateY: btnY.value }, { scale: btnScale.value }],
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOp.value,
+    transform: [{ translateY: contentY.value }],
   }))
 
   async function handleStart() {
     if (pressed) return
     setPressed(true)
-    // Le prénom et l'intention sont optionnels (l'app reste sans compte). Mais
-    // s'ils sont donnés, on les écrit en mémoire AVANT le premier message : l'IA
-    // les connaît dès sa première phrase, et l'accueil devient personnalisé.
     const facts: string[] = []
     const clean = name.trim()
     if (clean) {
       await setUserName(clean)
       facts.push(`Se prénomme ${clean}`)
+    }
+    if (status) {
+      const label = STATUSES.find((s) => s.id === status)?.label
+      if (label) facts.push(`Profil : ${label}`)
     }
     if (intent) {
       const label = INTENTS.find((i) => i.id === intent)?.label
@@ -96,73 +101,158 @@ export default function OnboardingScreen() {
     router.replace('/')
   }
 
+  function handleNext() {
+    if (step < 3) {
+      setStep((step + 1) as 0 | 1 | 2 | 3)
+      orbScale.value = 0
+      titleOp.value = 0
+      titleY.value = 12
+      subOp.value = 0
+      subY.value = 10
+      contentOp.value = 0
+      contentY.value = 16
+    }
+  }
+
+  function getProgressDots() {
+    return Array.from({ length: 4 }, (_, i) => i <= step)
+  }
+
+  const canNext = step < 3
+
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
-      <View style={styles.center}>
-        <Animated.View style={orbStyle}>
-          <Orb state="idle" size={140} />
-        </Animated.View>
-        <Animated.Text style={[styles.title, { color: colors.text }, titleStyle]}>
-          Bonjour. Je suis là.
-        </Animated.Text>
-        <Animated.Text style={[styles.subtitle, { color: colors.textMuted }, subStyle]}>
-          Un espace à toi, local, sans jugement.
-        </Animated.Text>
+      {/* Progress bar */}
+      <View style={styles.progress}>
+        {getProgressDots().map((active, i) => (
+          <View
+            key={i}
+            style={[styles.dot, { backgroundColor: active ? colors.accent : colors.border }]}
+          />
+        ))}
       </View>
 
-      <Animated.View style={[styles.footer, btnStyle]}>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Ton prénom (facultatif)"
-          placeholderTextColor={colors.textFaint}
-          autoCapitalize="words"
-          returnKeyType="done"
-          style={[styles.nameField, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
-        />
+      <View style={styles.center}>
+        {step === 0 && (
+          <>
+            <Animated.View style={orbStyle}>
+              <Orb state="idle" size={140} />
+            </Animated.View>
+            <Animated.Text style={[styles.title, { color: colors.text }, titleStyle]}>
+              Bonjour. Je suis là.
+            </Animated.Text>
+            <Animated.Text style={[styles.subtitle, { color: colors.textMuted }, subStyle]}>
+              Un espace à toi, local, sans jugement.
+            </Animated.Text>
+          </>
+        )}
 
-        <View style={styles.intents}>
-          {INTENTS.map((i) => {
-            const active = intent === i.id
-            return (
-              <Pressable
-                key={i.id}
-                onPress={() => setIntent(active ? null : i.id)}
-                style={[
-                  styles.intentChip,
-                  { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.surface },
-                ]}>
-                <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 14 }}>
-                  {i.label}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
+        {step === 1 && (
+          <>
+            <Animated.Text style={[styles.title, { color: colors.text }, titleStyle]}>
+              Comment tu t'appelles ?
+            </Animated.Text>
+            <Animated.Text style={[styles.subtitle, { color: colors.textMuted }, subStyle]}>
+              Optionnel — je peux aussi t'appeler autrement.
+            </Animated.Text>
+            <Animated.View style={[styles.inputContainer, contentStyle]}>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Ton prénom"
+                placeholderTextColor={colors.textFaint}
+                autoCapitalize="words"
+                returnKeyType="done"
+                style={[styles.nameField, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
+              />
+            </Animated.View>
+          </>
+        )}
 
+        {step === 2 && (
+          <>
+            <Animated.Text style={[styles.title, { color: colors.text }, titleStyle]}>
+              Quel est ton statut ?
+            </Animated.Text>
+            <Animated.View style={[styles.chipsContainer, contentStyle]}>
+              {STATUSES.map((s) => {
+                const active = status === s.id
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => setStatus(active ? null : s.id)}
+                    style={[
+                      styles.statusChip,
+                      { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.surface },
+                    ]}>
+                    <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 14, textAlign: 'center' }}>
+                      {s.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </Animated.View>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <Animated.Text style={[styles.title, { color: colors.text }, titleStyle]}>
+              Pourquoi es-tu venu ?
+            </Animated.Text>
+            <Animated.View style={[styles.chipsContainer, contentStyle]}>
+              {INTENTS.map((i) => {
+                const active = intent === i.id
+                return (
+                  <Pressable
+                    key={i.id}
+                    onPress={() => setIntent(active ? null : i.id)}
+                    style={[
+                      styles.intentChip,
+                      { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.surface },
+                    ]}>
+                    <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 14 }}>
+                      {i.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </Animated.View>
+          </>
+        )}
+      </View>
+
+      <View style={styles.footer}>
         <Pressable
-          onPressIn={() => (btnScale.value = withSpring(0.97, SPRING.press))}
-          onPressOut={() => (btnScale.value = withSpring(1, SPRING.press))}
-          onPress={handleStart}
+          onPressIn={() => {}}
+          onPressOut={() => {}}
+          onPress={canNext ? handleNext : handleStart}
+          disabled={step === 3 && pressed}
           style={[styles.button, { backgroundColor: colors.accent }]}>
-          {/* Texte sombre sur accent : contraste signature, pas du blanc par défaut */}
-          <Text style={[styles.buttonText, { color: colors.bg }]}>Commencer</Text>
+          <Text style={[styles.buttonText, { color: colors.bg }]}>
+            {step === 3 ? 'Commencer' : 'Suivant'}
+          </Text>
         </Pressable>
-        <Text style={[styles.caption, { color: colors.textFaint }]}>Aucun compte requis</Text>
-      </Animated.View>
+        <Text style={[styles.caption, { color: colors.textFaint }]}>
+          {step === 0 && 'Aucun compte requis'}
+          {step !== 0 && 'Tous les champs sont optionnels'}
+        </Text>
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: 32 },
+  progress: { flexDirection: 'row', gap: 8, justifyContent: 'center', paddingTop: 32, paddingBottom: 16 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   title: {
     fontFamily: 'Inter_700Bold',
     fontSize: 34,
     letterSpacing: -0.5,
     textAlign: 'center',
-    marginTop: 48,
+    marginTop: 32,
   },
   subtitle: {
     fontFamily: 'Inter_400Regular',
@@ -171,7 +261,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  footer: { paddingBottom: 56, gap: 14, alignItems: 'center' },
+  inputContainer: { alignSelf: 'stretch', marginTop: 24 },
   nameField: {
     alignSelf: 'stretch',
     height: 52,
@@ -181,13 +271,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 16,
   },
-  intents: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
+  chipsContainer: { marginTop: 24, alignSelf: 'stretch', gap: 8 },
+  statusChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
   intentChip: {
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
   },
+  footer: { paddingBottom: 56, gap: 14, alignItems: 'center' },
   button: {
     height: 52,
     borderRadius: 26,
