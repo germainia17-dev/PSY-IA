@@ -148,21 +148,23 @@ function RootStack() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },
+        animationEnabled: true,
+        animationDuration: 250,
       }}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="auth/callback" options={{ headerShown: false, gestureEnabled: false }} />
-      <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
-      <Stack.Screen name="settings" options={{ ...sharedModal, title: 'Paramètres' }} />
-      <Stack.Screen name="history" options={{ ...sharedModal, title: 'Conversations' }} />
-      <Stack.Screen name="memory" options={{ ...sharedModal, title: 'Mémoire' }} />
-      <Stack.Screen name="journey" options={{ ...sharedModal, title: 'Mon parcours' }} />
-      <Stack.Screen name="personalization" options={{ ...sharedModal, title: 'Personnalisation' }} />
-      <Stack.Screen name="sessions" options={{ ...sharedModal, title: 'Séances' }} />
-      <Stack.Screen name="account" options={{ ...sharedModal, title: 'Mon compte' }} />
-      <Stack.Screen name="evolution" options={{ ...sharedModal, title: 'Ton évolution' }} />
-      <Stack.Screen name="policy" options={{ ...sharedModal, title: 'Politique & Confidentialité' }} />
-      <Stack.Screen name="paywall" options={{ ...sharedModal, title: 'Companion Pro' }} />
-      <Stack.Screen name="analytics" options={{ ...sharedModal, title: 'Test Analytics' }} />
+      <Stack.Screen name="auth/callback" options={{ headerShown: false, gestureEnabled: false, animation: 'none' }} />
+      <Stack.Screen name="onboarding" options={{ animation: 'slide_from_right', gestureEnabled: false }} />
+      <Stack.Screen name="settings" options={{ ...sharedModal, title: 'Paramètres', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="history" options={{ ...sharedModal, title: 'Conversations', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="memory" options={{ ...sharedModal, title: 'Mémoire', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="journey" options={{ ...sharedModal, title: 'Mon parcours', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="personalization" options={{ ...sharedModal, title: 'Personnalisation', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="sessions" options={{ ...sharedModal, title: 'Séances', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="account" options={{ ...sharedModal, title: 'Mon compte', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="evolution" options={{ ...sharedModal, title: 'Ton évolution', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="policy" options={{ ...sharedModal, title: 'Politique & Confidentialité', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="paywall" options={{ ...sharedModal, title: 'Companion Pro', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="analytics" options={{ ...sharedModal, title: 'Test Analytics', animation: 'slide_from_bottom' }} />
     </Stack>
   )
 }

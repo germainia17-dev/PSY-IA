@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { sendChatMessage, extractMemory, summarizeSession, recordMood, ChatError, isPro, PRO_OFFERS } from '../lib/api'
 import { usePro } from '../lib/use-pro'
 import { logEvent } from '../lib/events'
+import { getLinkedEmail } from '../lib/auth'
 import {
   addMemoryFacts,
   getMemory,
@@ -79,6 +80,7 @@ export default function ChatScreen() {
   const [focused, setFocused] = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const [onboarded, setOnboarded] = useState<boolean | null>(null)
+  const [hasAccount, setHasAccount] = useState<boolean | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [askReminder, setAskReminder] = useState(false)
   const [todayMood, setTodayMoodState] = useState<number | null>(null)
@@ -91,6 +93,7 @@ export default function ChatScreen() {
   const promoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((v) => setOnboarded(v === '1'))
+    getLinkedEmail().then((email) => setHasAccount(!!email)).catch(() => setHasAccount(false))
     // Show promo modal 2 seconds after app launch if not shown and not pro
     promoTimer.current = setTimeout(async () => {
       const shown = await AsyncStorage.getItem('@companion_promo_shown')
@@ -264,11 +267,14 @@ export default function ChatScreen() {
   const isFresh = messages.length <= 1 && !limited && !sending
 
   // Premier lancement : on naît dans l'onboarding, pas dans le chat
-  if (onboarded === null || convo === null) {
+  if (onboarded === null || convo === null || hasAccount === null) {
     return <View style={[styles.root, { backgroundColor: colors.bg }]} />
   }
   if (!onboarded) {
     return <Redirect href="/onboarding" />
+  }
+  if (!hasAccount) {
+    return <Redirect href="/account" />
   }
 
   return (
