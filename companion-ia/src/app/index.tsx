@@ -14,8 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Redirect, useFocusEffect, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { sendChatMessage, extractMemory, ChatError, isPro, PRO_OFFERS } from '../lib/api'
+import { sendChatMessage, extractMemory, summarizeSession, recordMood, ChatError, isPro, PRO_OFFERS } from '../lib/api'
 import { usePro } from '../lib/use-pro'
+import { logEvent } from '../lib/events'
 import {
   addMemoryFacts,
   getMemory,
@@ -25,6 +26,7 @@ import {
   loadCurrentOrNew,
   newConversation,
   saveConversation,
+  saveSessionSummary,
   setCurrentId,
   setTodayMood,
   type Conversation,
@@ -33,6 +35,7 @@ import {
 import {
   enableDailyReminder,
   markReminderAsked,
+  refreshDailyReminderFromThemes,
   reminderAsked,
 } from '../lib/notifications'
 import { type as typo } from '../constants/type'
@@ -179,6 +182,20 @@ export default function ChatScreen() {
         })
       }
 
+      // Résumé + thèmes de la séance (best-effort, sans quota). Dès qu'il y a de
+      // la matière (≥ 2 tours), tous les 2 tours pour limiter les appels. Nourrit
+      // l'historique « ce dont on a parlé » ET la relance personnalisée — c'est ce
+      // qui rend vraie la promesse « il se souvient de toi ».
+      if (userTurns >= 2 && userTurns % 2 === 0) {
+        summarizeSession(withReply).then(async ({ summary, themes }) => {
+          if (!summary && themes.length === 0) return
+          await saveSessionSummary(saved.id, summary, themes)
+          // Reflète le résumé en mémoire pour qu'un prochain envoi ne l'écrase pas.
+          setConvo((c) => (c && c.id === saved.id ? { ...c, summary, themes } : c))
+          await refreshDailyReminderFromThemes()
+        })
+      }
+
       // Après le tout premier échange — le moment où le lien se crée — on propose
       // (une seule fois) un rappel quotidien. C'est le levier de rétention J1/J7.
       if (userTurns === 1 && Platform.OS !== 'web' && !(await reminderAsked())) {
@@ -189,6 +206,7 @@ export default function ChatScreen() {
         haptic('limit')
         setLimited(true)
         await saveConversation(optimistic)
+        await logEvent('limit_reached')
       } else {
         const content =
           err instanceof ChatError
@@ -226,6 +244,7 @@ export default function ChatScreen() {
   function pickMood(value: number) {
     setTodayMoodState(value)
     setTodayMood(value).catch(() => {})
+    recordMood(value).catch(() => {})
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
   }
 
@@ -355,17 +374,30 @@ export default function ChatScreen() {
               On se retrouve demain ?
             </Text>
             <Text style={[typo.caption as object, { color: colors.textMuted, textAlign: 'center', maxWidth: 280 }]}>
-              Tu as atteint ta limite de messages pour aujourd'hui. Je serai là dès demain. Prends
-              soin de toi d'ici là.
+              Tu as atteint ta limite de messages pour aujourd&apos;hui. Je serai là dès demain pour continuer.
             </Text>
-            <TouchableOpacity
-              style={[styles.proBtn, { backgroundColor: colors.accent }]}
-              activeOpacity={0.85}
-              onPress={() => router.push('/paywall')}>
-              <Text style={[typo.button as object, { color: colors.accentTx }]}>Continuer avec Companion Pro</Text>
-            </TouchableOpacity>
-            <Text style={[typo.caption as object, { color: colors.textMuted }]}>
-              Conversations illimitées · sans publicité
+            <View style={styles.limitActions}>
+              <TouchableOpacity
+                style={[styles.limitBtn, { backgroundColor: colors.accentSoft, borderColor: colors.accent }]}
+                activeOpacity={0.85}
+                onPress={async () => {
+                  await logEvent('view_evolution_clicked')
+                  router.push('/journey' as never)
+                }}>
+                <Text style={[typo.button as object, { color: colors.accent }]}>Voir ton évolution</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.limitBtn, { backgroundColor: colors.accent }]}
+                activeOpacity={0.85}
+                onPress={async () => {
+                  await logEvent('upgrade_clicked')
+                  router.push('/paywall')
+                }}>
+                <Text style={[typo.button as object, { color: colors.accentTx }]}>Continuer maintenant</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[typo.caption as object, { color: colors.textFaint, textAlign: 'center', fontSize: 12 }]}>
+              Pro: illimitées · Sans interruption
             </Text>
           </View>
         ) : (
@@ -491,6 +523,19 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  limitActions: {
+    gap: 10,
+    alignSelf: 'stretch',
+    marginTop: 4,
+  },
+  limitBtn: {
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    borderWidth: 1.5,
   },
   proBtn: {
     height: 52,

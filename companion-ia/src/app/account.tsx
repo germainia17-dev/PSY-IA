@@ -12,8 +12,9 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { getLinkedEmail, linkEmail, signInWithEmail, signOut } from '../lib/auth'
+import { getLinkedEmail, linkEmail, signInWithEmail, signInWithGoogle, signOut } from '../lib/auth'
 import { confirm, notify } from '../lib/confirm'
+import { pullConversations, syncConversations } from '../lib/sync'
 import { supabase } from '../lib/supabase'
 import { type as typo } from '../constants/type'
 import { useTheme } from '../hooks/use-theme'
@@ -51,6 +52,23 @@ export default function AccountScreen() {
       setSent(true)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur inconnue'
+      notify('Erreur', msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleGoogle() {
+    setLoading(true)
+    try {
+      const ok = await signInWithGoogle()
+      if (!ok) return // annulé
+      await pullConversations().catch(() => {})
+      await syncConversations().catch(() => {})
+      const linked = await getLinkedEmail().catch(() => null)
+      setLinkedEmail(linked)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Connexion Google impossible'
       notify('Erreur', msg)
     } finally {
       setLoading(false)
@@ -136,6 +154,26 @@ export default function AccountScreen() {
           ) : (
             // — Pas de compte lié —
             <>
+              {Platform.OS !== 'web' && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.btn, styles.googleBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    onPress={handleGoogle}
+                    disabled={loading}
+                    activeOpacity={0.85}>
+                    {loading
+                      ? <ActivityIndicator color={colors.accent} />
+                      : <Text style={[typo.button as object, { color: colors.text }]}>Continuer avec Google</Text>
+                    }
+                  </TouchableOpacity>
+                  <View style={styles.dividerRow}>
+                    <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                    <Text style={[typo.caption as object, { color: colors.textFaint }]}>ou par email</Text>
+                    <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                  </View>
+                </>
+              )}
+
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[typo.label as object, { color: colors.text }]}>Sauvegarder ton compte</Text>
                 <Text style={[typo.caption as object, { color: colors.textMuted, marginTop: 8 }]}>
@@ -225,4 +263,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   btnDestructive: { backgroundColor: '#A8331F', marginTop: 16 },
+  googleBtn: { borderWidth: StyleSheet.hairlineWidth, marginTop: 0 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
 })

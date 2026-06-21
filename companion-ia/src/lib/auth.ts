@@ -1,10 +1,49 @@
+import {
+  GoogleSignin,
+  isSuccessResponse,
+} from '@react-native-google-signin/google-signin'
 import { supabase } from './supabase'
+
+// Connexion Google native → on échange l'idToken Google contre une session
+// Supabase (provider 'google'). Le webClientId est l'OAuth *Web* client de
+// Google Cloud (cf. EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID). Nécessite : provider
+// Google activé dans Supabase + un build natif (le module ne marche pas en Expo Go).
+let googleConfigured = false
+function configureGoogle() {
+  if (googleConfigured) return
+  GoogleSignin.configure({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  })
+  googleConfigured = true
+}
+
+// Retourne true si la session Google a été créée. Lève une erreur en cas
+// d'échec réel ; retourne false si l'utilisateur a annulé.
+export async function signInWithGoogle(): Promise<boolean> {
+  configureGoogle()
+  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+  const response = await GoogleSignin.signIn()
+  if (!isSuccessResponse(response)) return false // annulé par l'utilisateur
+
+  const idToken = response.data.idToken
+  if (!idToken) throw new Error('Google : idToken manquant')
+
+  const { error } = await supabase.auth.signInWithIdToken({
+    provider: 'google',
+    token: idToken,
+  })
+  if (error) throw error
+  return true
+}
 
 // Upgrade une session anonyme en compte email (même user_id conservé).
 // Envoie un lien magique de confirmation — l'utilisateur clique et la
 // session bascule en compte complet sans changer son historique/plan.
 export async function linkEmail(email: string): Promise<void> {
-  const { error } = await supabase.auth.updateUser({ email })
+  const { error } = await supabase.auth.updateUser(
+    { email },
+    { emailRedirectTo: 'companionia://auth/callback' },
+  )
   if (error) throw error
 }
 

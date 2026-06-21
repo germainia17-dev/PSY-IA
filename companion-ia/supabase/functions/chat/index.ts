@@ -21,7 +21,16 @@ Ta façon d'être :
 
 Tu ne donnes jamais de conseils médicaux et ne prétends jamais être thérapeute. Si la personne évoque des idées suicidaires ou un danger immédiat, encourage-la avec douceur à contacter le 3114 (prévention du suicide, gratuit, 24h/24) ou le 112.`
 
-const EXTRACT_PROMPT = `Tu extrais des faits DURABLES et importants sur l'utilisateur à partir de la conversation, pour qu'un compagnon s'en souvienne plus tard. Faits durables = prénom, âge, projets, études/travail, passions, relations proches, objectifs, situation de vie. Ignore l'éphémère (l'humeur du moment, le sujet d'une seule fois). Retourne UNIQUEMENT un tableau JSON de chaînes courtes en français (max 5, chacune < 120 caractères), sans aucun texte autour. Si rien de durable, retourne []. Exemple: ["Prépare un bac STI2D","Passionné par l'impression 3D","Fait du ski aux Portes du Soleil"]`
+const EXTRACT_PROMPT = `Tu analyses une conversation pour un compagnon IA. Retourne UNIQUEMENT un objet JSON, sans aucun texte autour, avec EXACTEMENT ces clés :
+- "facts": tableau de faits DURABLES sur l'utilisateur (prénom, âge, projets, études/travail, passions, relations proches, objectifs, situation de vie). Ignore l'éphémère (humeur du moment, sujet ponctuel). Max 5 chaînes courtes en français, chacune < 120 caractères. [] si rien de durable.
+- "mood": entier de 1 à 5 estimant l'humeur générale de l'utilisateur dans cette conversation (1 = très mal, 3 = neutre, 5 = très bien), ou null si indéterminable.
+- "stress": entier de 1 à 5 estimant son niveau de stress/anxiété (1 = très calme, 5 = très stressé), ou null si indéterminable.
+Exemple: {"facts":["Prépare un bac STI2D","Passionné par l'impression 3D"],"mood":2,"stress":4}`
+
+const SUMMARY_PROMPT = `Tu analyses une séance de conversation entre une personne et son compagnon IA. Retourne UNIQUEMENT un objet JSON, sans aucun texte autour, avec EXACTEMENT ces clés :
+- "summary": un résumé court et chaleureux de ce dont la personne a parlé, écrit du point de vue du compagnon en tutoyant (ex: "Tu m'as parlé du stress de tes partiels et de ta relation avec ton frère."). 1 à 2 phrases, < 200 caractères. "" si la séance est trop courte ou sans vrai contenu.
+- "themes": tableau de 1 à 4 thèmes courts abordés, en minuscules, 1 à 2 mots chacun (ex: ["études","famille","sommeil"]). [] si rien de net.
+Exemple: {"summary":"Tu m'as parlé de ton angoisse avant les partiels et du manque de sommeil.","themes":["études","stress","sommeil"]}`
 
 // Tons de l'IA (fonctionnalité Pro). `doux` = comportement par défaut décrit
 // dans SYSTEM_PROMPT → pas d'instruction ajoutée. Les autres infléchissent le
@@ -50,7 +59,10 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-function validateMessages(input: unknown): Msg[] | null {
+// `requireUserLast` : le chat exige que le dernier message soit de l'utilisateur
+// (on répond à quelqu'un). Les modes d'analyse (extract/summary) reçoivent une
+// séance entière qui se termine souvent par une réponse de l'IA → on relâche.
+function validateMessages(input: unknown, requireUserLast = true): Msg[] | null {
   if (!Array.isArray(input) || input.length === 0) return null
   const messages: Msg[] = []
   for (const m of input.slice(-MAX_HISTORY)) {
@@ -64,7 +76,7 @@ function validateMessages(input: unknown): Msg[] | null {
     }
     messages.push({ role: m.role, content: m.content.slice(0, MAX_MESSAGE_LENGTH) })
   }
-  if (messages[messages.length - 1].role !== 'user') return null
+  if (requireUserLast && messages[messages.length - 1].role !== 'user') return null
   return messages
 }
 
@@ -147,19 +159,80 @@ async function callAnthropic(messages: Msg[], apiKey: string, system: string, ma
   return text
 }
 
-// Parse une réponse de modèle censée être un tableau JSON de chaînes.
-function parseFacts(raw: string): string[] {
+type Extract = { facts: string[]; mood: number | null; stress: number | null }
+
+// Clamp une valeur en entier 1..5, ou null si absente/invalide.
+function clamp1to5(v: unknown): number | null {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null
+  const n = Math.round(v)
+  return n >= 1 && n <= 5 ? n : null
+}
+
+// Parse la réponse d'extraction : un objet JSON {facts, mood, stress}. Tolère
+// les fences ```json et un format dégradé (ancien tableau de chaînes).
+function parseExtract(raw: string): Extract {
   const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim()
-  const start = cleaned.indexOf('[')
-  const end = cleaned.lastIndexOf(']')
-  if (start === -1 || end === -1) return []
-  try {
-    const arr = JSON.parse(cleaned.slice(start, end + 1))
-    if (!Array.isArray(arr)) return []
-    return arr.filter((x) => typeof x === 'string' && x.trim().length > 0).slice(0, 5)
-  } catch {
-    return []
+
+  // Format attendu : objet JSON.
+  const objStart = cleaned.indexOf('{')
+  const objEnd = cleaned.lastIndexOf('}')
+  if (objStart !== -1 && objEnd !== -1) {
+    try {
+      const obj = JSON.parse(cleaned.slice(objStart, objEnd + 1))
+      const facts = Array.isArray(obj?.facts)
+        ? obj.facts.filter((x: unknown) => typeof x === 'string' && x.trim().length > 0).slice(0, 5)
+        : []
+      return { facts, mood: clamp1to5(obj?.mood), stress: clamp1to5(obj?.stress) }
+    } catch {
+      // tombe sur le fallback tableau ci-dessous
+    }
   }
+
+  // Fallback : ancien format tableau de chaînes.
+  const arrStart = cleaned.indexOf('[')
+  const arrEnd = cleaned.lastIndexOf(']')
+  if (arrStart !== -1 && arrEnd !== -1) {
+    try {
+      const arr = JSON.parse(cleaned.slice(arrStart, arrEnd + 1))
+      if (Array.isArray(arr)) {
+        return {
+          facts: arr.filter((x) => typeof x === 'string' && x.trim().length > 0).slice(0, 5),
+          mood: null,
+          stress: null,
+        }
+      }
+    } catch {
+      // rien d'exploitable
+    }
+  }
+
+  return { facts: [], mood: null, stress: null }
+}
+
+type SessionSummary = { summary: string; themes: string[] }
+
+// Parse la réponse de résumé : un objet JSON {summary, themes}. Tolère les
+// fences ```json. Renvoie un résumé vide si rien d'exploitable (jamais bloquant).
+function parseSummary(raw: string): SessionSummary {
+  const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim()
+  const start = cleaned.indexOf('{')
+  const end = cleaned.lastIndexOf('}')
+  if (start !== -1 && end !== -1) {
+    try {
+      const obj = JSON.parse(cleaned.slice(start, end + 1))
+      const summary = typeof obj?.summary === 'string' ? obj.summary.trim().slice(0, 240) : ''
+      const themes = Array.isArray(obj?.themes)
+        ? obj.themes
+            .filter((x: unknown) => typeof x === 'string' && x.trim().length > 0)
+            .map((x: string) => x.trim().toLowerCase().slice(0, 24))
+            .slice(0, 4)
+        : []
+      return { summary, themes }
+    } catch {
+      // rien d'exploitable
+    }
+  }
+  return { summary: '', themes: [] }
 }
 
 Deno.serve(async (req) => {
@@ -194,7 +267,10 @@ Deno.serve(async (req) => {
     return json({ error: 'JSON invalide' }, 400)
   }
 
-  const messages = validateMessages(body?.messages)
+  // extract/summary analysent une séance entière (peut finir par l'IA) → on ne
+  // force pas un dernier message utilisateur, contrairement au chat.
+  const isAnalysisMode = body?.mode === 'extract' || body?.mode === 'summary'
+  const messages = validateMessages(body?.messages, !isAnalysisMode)
   if (!messages) {
     return json({ error: 'Format de messages invalide' }, 400)
   }
@@ -208,21 +284,58 @@ Deno.serve(async (req) => {
   // ça, l'extraction renvoyait [] dès la 1re erreur et la mémoire restait vide.
   if (body?.mode === 'extract') {
     const last = messages.slice(-12)
+    let result: Extract | null = null
     if (geminiKey) {
       try {
-        return json({ facts: parseFacts(await callGemini(last, geminiKey, EXTRACT_PROMPT, 200)) })
+        result = parseExtract(await callGemini(last, geminiKey, EXTRACT_PROMPT, 250))
       } catch (err) {
         console.error('extract Gemini failed:', err)
       }
     }
-    if (anthropicKey) {
+    if (!result && anthropicKey) {
       try {
-        return json({ facts: parseFacts(await callAnthropic(last, anthropicKey, EXTRACT_PROMPT, 200)) })
+        result = parseExtract(await callAnthropic(last, anthropicKey, EXTRACT_PROMPT, 250))
       } catch (err) {
         console.error('extract Anthropic failed:', err)
       }
     }
-    return json({ facts: [] })
+    if (!result) return json({ facts: [] })
+
+    // Sentiment du jour (humeur/stress) déduit ICI, sans appel modèle
+    // supplémentaire : on réutilise l'appel d'extraction de mémoire. On n'écrit
+    // que si au moins une valeur est exploitable (la RPC fait un merge).
+    if (result.mood !== null || result.stress !== null) {
+      supabase
+        .rpc('upsert_daily_metric', { p_mood: result.mood, p_stress: result.stress })
+        .then()
+        .catch((err: unknown) => console.error('upsert sentiment failed:', err))
+    }
+
+    // Les faits restent côté client (jamais stockés serveur) : on ne renvoie que ça.
+    return json({ facts: result.facts })
+  }
+
+  // ── Mode résumé de séance : pas de quota, retourne {summary, themes}. ──
+  // Même cascade Gemini → Anthropic que le chat. Rien n'est stocké serveur : le
+  // résumé et les thèmes reviennent au client (historique + relance personnalisée).
+  if (body?.mode === 'summary') {
+    const recent = messages.slice(-16)
+    let summary: SessionSummary | null = null
+    if (geminiKey) {
+      try {
+        summary = parseSummary(await callGemini(recent, geminiKey, SUMMARY_PROMPT, 300))
+      } catch (err) {
+        console.error('summary Gemini failed:', err)
+      }
+    }
+    if (!summary && anthropicKey) {
+      try {
+        summary = parseSummary(await callAnthropic(recent, anthropicKey, SUMMARY_PROMPT, 300))
+      } catch (err) {
+        console.error('summary Anthropic failed:', err)
+      }
+    }
+    return json(summary ?? { summary: '', themes: [] })
   }
 
   // ── Mode chat : quota atomique côté DB, pas de race condition. ──
@@ -240,19 +353,38 @@ Deno.serve(async (req) => {
     )
   }
 
-  const system = buildSystem(body?.memory, body?.tone)
+  // Gating Pro côté SERVEUR : le ton personnalisé est une feature Pro. Le front
+  // verrouille l'UI mais peut être contourné — ici on ne l'applique qu'aux
+  // comptes 'pro', sinon ton par défaut quoi que le client envoie.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('user_id', userData.user.id)
+    .maybeSingle()
+  const isProUser = profile?.plan === 'pro'
+
+  const system = buildSystem(body?.memory, isProUser ? body?.tone : undefined)
   const errors: string[] = []
+
+  // Active à la fois le suivi du dernier message (push) et le compteur
+  // d'engagement du jour (graphe « capacité à parler »). Best-effort, jamais bloquant.
+  const recordActivity = () => {
+    supabase
+      .from('profiles')
+      .update({ last_message_at: new Date().toISOString() })
+      .eq('user_id', userData.user.id)
+      .then()
+      .catch(() => {})
+    supabase
+      .rpc('upsert_daily_metric', { p_messages_delta: 1 })
+      .then()
+      .catch(() => {})
+  }
 
   if (geminiKey) {
     try {
       const text = await callGemini(messages, geminiKey, system)
-      // Update last_message_at for daily push tracking
-      supabase
-        .from('profiles')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('user_id', userData.user.id)
-        .then()
-        .catch(() => {})
+      recordActivity()
       return json({ text, remaining })
     } catch (err) {
       errors.push(String(err))
@@ -263,13 +395,7 @@ Deno.serve(async (req) => {
   if (anthropicKey) {
     try {
       const text = await callAnthropic(messages, anthropicKey, system)
-      // Update last_message_at for daily push tracking
-      supabase
-        .from('profiles')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('user_id', userData.user.id)
-        .then()
-        .catch(() => {})
+      recordActivity()
       return json({ text, remaining })
     } catch (err) {
       errors.push(String(err))

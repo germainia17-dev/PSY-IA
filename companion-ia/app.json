@@ -37,18 +37,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/android-icon-monochrome.png",
-          "color": "#C77A4A",
-          "sounds": [],
-          "iosDisplayInForeground": true,
-          "androidChannels": [
-            {
-              "name": "companion-default",
-              "identifier": "companion-default",
-              "importance": "MAX",
-              "vibration": true,
-              "sound": "default"
-            }
-          ]
+          "color": "#C77A4A"
         }
       ],
       [
@@ -67,7 +56,8 @@
         {
           "photosPermission": "Companion utilise tes photos pour personnaliser le logo de ton compagnon."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,

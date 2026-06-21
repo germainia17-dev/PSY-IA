@@ -7,7 +7,7 @@ export type PlanInterval = 'weekly' | 'monthly' | 'annual'
 const STRIPE_LINKS: Record<PlanInterval, string> = {
   weekly:  'https://buy.stripe.com/4gMbJ04YQbDCdIa423frW08',
   monthly: 'https://buy.stripe.com/3cIaEWdvmazy8nQ423frW09',
-  annual:  'https://buy.stripe.com/bJefZg62UdLK0VogOPfrW0a',
+  annual:  'https://buy.stripe.com/6oUbJ0bneazy33w1TVfrW0b',
 }
 
 export const PRO_OFFERS: {
@@ -99,6 +99,44 @@ export async function extractMemory(messages: Message[]): Promise<string[]> {
     return Array.isArray(data?.facts) ? data.facts.filter((f: unknown) => typeof f === 'string') : []
   } catch {
     return [] // l'extraction est best-effort, jamais bloquante
+  }
+}
+
+// Résumé de séance : l'IA condense ce dont on a parlé + en extrait les thèmes.
+// Ne consomme pas de quota, ne stocke rien côté serveur — tout revient au client
+// (historique « ce dont on a parlé » + relance personnalisée). Best-effort.
+export type SessionSummary = { summary: string; themes: string[] }
+
+export async function summarizeSession(messages: Message[]): Promise<SessionSummary> {
+  try {
+    const { token } = await ensureSession()
+    const response = await fetch(functionUrl('chat'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ mode: 'summary', messages }),
+    })
+    if (!response.ok) return { summary: '', themes: [] }
+    const data = await response.json().catch(() => null)
+    return {
+      summary: typeof data?.summary === 'string' ? data.summary : '',
+      themes: Array.isArray(data?.themes)
+        ? data.themes.filter((t: unknown) => typeof t === 'string')
+        : [],
+    }
+  } catch {
+    return { summary: '', themes: [] } // jamais bloquant
+  }
+}
+
+// Humeur du jour saisie manuellement (check-in emoji) : on la pousse aussi en
+// base pour le graphe d'évolution. Best-effort — l'enregistrement local reste
+// la source qui fait foi pour l'UI immédiate.
+export async function recordMood(value: number): Promise<void> {
+  try {
+    await ensureSession()
+    await supabase.rpc('upsert_daily_metric', { p_mood: value })
+  } catch {
+    // silencieux : le suivi cloud est un bonus, jamais bloquant
   }
 }
 

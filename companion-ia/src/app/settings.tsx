@@ -12,7 +12,9 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { cancelSubscription } from '../lib/api'
+import { cancelSubscription, summarizeSession } from '../lib/api'
+import { loadCurrentOrNew, saveSessionSummary } from '../lib/storage'
+import { sendTestReengagementNow } from '../lib/notifications'
 import { getLinkedEmail } from '../lib/auth'
 import { usePro } from '../lib/use-pro'
 import { Confetti } from '../components/confetti'
@@ -31,6 +33,23 @@ export default function SettingsScreen() {
   useEffect(() => {
     getLinkedEmail().then(setLinkedEmail).catch(() => {})
   }, [])
+
+  // DEBUG (dev only) : force le résumé de la séance courante puis envoie la
+  // relance personnalisée dans 3s. Permet de valider la feature sans attendre 20h.
+  async function runDebugSummary() {
+    try {
+      const convo = await loadCurrentOrNew()
+      const { summary, themes } = await summarizeSession(convo.messages)
+      await saveSessionSummary(convo.id, summary, themes)
+      const body = await sendTestReengagementNow()
+      notify(
+        'Résumé de séance',
+        `Résumé : ${summary || '(vide)'}\n\nThèmes : ${themes.join(', ') || '(aucun)'}\n\nRelance (dans 3s) : ${body}`,
+      )
+    } catch (err) {
+      notify('Debug', `Échec : ${String(err)}`)
+    }
+  }
 
   function confirmCancel() {
     confirm({
@@ -165,6 +184,19 @@ export default function SettingsScreen() {
             last
           />
         </Section>
+
+        {__DEV__ ? (
+          <Section label="Debug (dev)" colors={colors}>
+            <TouchableOpacity onPress={runDebugSummary} hitSlop={8}>
+              <Text style={[typo.label as object, { color: colors.accent }]}>
+                Tester résumé + relance
+              </Text>
+              <Text style={[typo.caption as object, { color: colors.textMuted }]}>
+                Résume la séance courante et envoie la notif personnalisée dans 3s
+              </Text>
+            </TouchableOpacity>
+          </Section>
+        ) : null}
 
         <Section label="En cas de besoin urgent" colors={colors}>
           <Text style={[typo.caption as object, { color: colors.textMuted, lineHeight: 18 }]}>

@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect } from 'expo-router'
-import { getMoods, getStreak, listConversations, type Mood } from '../lib/storage'
+import { getMoods, getStreak, getRecentThemes, listConversations, type Mood } from '../lib/storage'
 import { type as typo, type Palette } from '../constants/type'
 import { useTheme } from '../hooks/use-theme'
 
@@ -21,11 +21,13 @@ export default function JourneyScreen() {
   const [moods, setMoods] = useState<Mood[]>([])
   const [convos, setConvos] = useState(0)
   const [days, setDays] = useState(0)
+  const [themes, setThemes] = useState<{ theme: string; count: number }[]>([])
 
   useFocusEffect(
     useCallback(() => {
       getStreak().then(setStreak)
       getMoods().then(setMoods)
+      getRecentThemes().then(setThemes)
       listConversations().then((list) => {
         setConvos(list.length)
         setDays(new Set(list.map((c) => dayKey(new Date(c.updatedAt)))).size)
@@ -74,6 +76,20 @@ export default function JourneyScreen() {
           <Stat value={days} label={days > 1 ? 'jours de présence' : 'jour de présence'} colors={colors} />
         </View>
 
+        {themes.length > 0 && (
+          <>
+            <Text style={[styles.sectionLabel, { color: colors.textFaint }]}>CE QUI T'OCCUPE</Text>
+            <View style={[styles.themesContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {themes.slice(0, 5).map((t, i) => (
+                <View key={i} style={styles.themeRow}>
+                  <Text style={[typo.caption as object, { color: colors.text, flex: 1 }]}>{t.theme}</Text>
+                  <Text style={[typo.caption as object, { color: colors.textMuted }]}>×{t.count}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
         <Text style={[typo.caption as object, { color: colors.textMuted, textAlign: 'center', marginTop: 8 }]}>
           Ton parcours reste sur cet appareil. Personne d'autre n'y a accès.
         </Text>
@@ -121,4 +137,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  themesContainer: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, paddingVertical: 12, paddingHorizontal: 14, gap: 8 },
+  themeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
 })

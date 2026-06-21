@@ -96,10 +96,28 @@ export default function HistoryScreen() {
               <Text style={[typo.label as object, { color: colors.text }]} numberOfLines={1}>
                 {item.title}
               </Text>
-              {item.preview ? (
+              {/* « Ce dont on a parlé » : le résumé prime sur l'aperçu brut. */}
+              {item.summary ? (
+                <Text style={[typo.caption as object, { color: colors.textMuted, marginTop: 3 }]} numberOfLines={2}>
+                  {item.summary}
+                </Text>
+              ) : item.preview ? (
                 <Text style={[typo.caption as object, { color: colors.textMuted, marginTop: 2 }]} numberOfLines={1}>
                   {item.preview}
                 </Text>
+              ) : null}
+              {item.themes && item.themes.length > 0 ? (
+                <View style={styles.themeRow}>
+                  {item.themes.map((t) => (
+                    <View
+                      key={t}
+                      style={[styles.themeChip, { backgroundColor: colors.bg, borderColor: colors.border }]}>
+                      <Text style={{ color: colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 11 }}>
+                        {t}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               ) : null}
               <Text style={[styles.date, { color: colors.textFaint }]}>{formatDate(item.updatedAt)}</Text>
             </View>
@@ -133,5 +151,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   date: { fontSize: 12, marginTop: 6 },
+  themeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  themeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   delete: { padding: 6 },
 })

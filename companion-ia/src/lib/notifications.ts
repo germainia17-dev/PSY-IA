@@ -1,6 +1,7 @@
 import { Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Notifications from 'expo-notifications'
+import { getRecentThemes } from './storage'
 
 // Séances programmées : des rendez-vous doux avec son compagnon. Tout est local
 // (notifications planifiées sur l'appareil), rien ne passe par un serveur.
@@ -130,6 +131,47 @@ export async function enableDailyReminder(hour = 20, minute = 0): Promise<boolea
   })
   await AsyncStorage.setItem(DAILY_KEY, id)
   return true
+}
+
+// Personnalise la relance quotidienne avec un thème RÉEL des dernières séances
+// (« On avait parlé de … »). C'est ce qui rend vraie la promesse "il pense à toi"
+// au lieu d'un rappel générique. No-op si le rappel n'est pas activé. Honnête par
+// construction : on ne cite qu'un thème réellement abordé, jamais inventé.
+export async function refreshDailyReminderFromThemes(hour = 20, minute = 0): Promise<void> {
+  if (Platform.OS === 'web') return
+  const existing = await AsyncStorage.getItem(DAILY_KEY)
+  if (!existing) return // l'utilisateur n'a pas activé le rappel → on ne touche à rien
+
+  const themes = await getRecentThemes(8)
+  // Un thème récurrent (vu ≥ 2 fois) est plus pertinent ; sinon le plus récent.
+  const top = (themes.find((t) => t.count >= 2) ?? themes[0])?.theme
+  const body = top
+    ? `On avait parlé de « ${top} ». Comment ça va aujourd'hui ?`
+    : pickReminder(hour)
+
+  await Notifications.cancelScheduledNotificationAsync(existing).catch(() => {})
+  const id = await Notifications.scheduleNotificationAsync({
+    content: { title: 'Companion', body, sound: true },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
+  })
+  await AsyncStorage.setItem(DAILY_KEY, id)
+}
+
+// DEBUG : envoie tout de suite (3s) la relance personnalisée telle qu'elle
+// partirait à 20h, pour valider la feature sans attendre. Ignore l'état du
+// rappel quotidien (sert juste à voir le texte construit depuis les thèmes).
+export async function sendTestReengagementNow(): Promise<string> {
+  if (Platform.OS === 'web' || !(await ensurePermission())) return '(notifications indisponibles)'
+  const themes = await getRecentThemes(8)
+  const top = (themes.find((t) => t.count >= 2) ?? themes[0])?.theme
+  const body = top
+    ? `On avait parlé de « ${top} ». Comment ça va aujourd'hui ?`
+    : pickReminder(20)
+  await Notifications.scheduleNotificationAsync({
+    content: { title: 'Companion', body, sound: true },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3 },
+  })
+  return body
 }
 
 export async function disableDailyReminder(): Promise<void> {

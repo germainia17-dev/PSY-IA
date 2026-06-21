@@ -35,7 +35,7 @@ const STATUSES = [
 export default function OnboardingScreen() {
   const router = useRouter()
   const colors = palettes.dark
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(0)
+  const [step, setStep] = useState<0 | 1>(0)
   const [pressed, setPressed] = useState(false)
   const [name, setName] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -102,8 +102,8 @@ export default function OnboardingScreen() {
   }
 
   function handleNext() {
-    if (step < 3) {
-      setStep((step + 1) as 0 | 1 | 2 | 3)
+    if (step < 1) {
+      setStep((step + 1) as 0 | 1)
       orbScale.value = 0
       titleOp.value = 0
       titleY.value = 12
@@ -115,10 +115,10 @@ export default function OnboardingScreen() {
   }
 
   function getProgressDots() {
-    return Array.from({ length: 4 }, (_, i) => i <= step)
+    return Array.from({ length: 2 }, (_, i) => i <= step)
   }
 
-  const canNext = step < 3
+  const canNext = step < 1
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
@@ -150,73 +150,63 @@ export default function OnboardingScreen() {
         {step === 1 && (
           <>
             <Animated.Text style={[styles.title, { color: colors.text }, titleStyle]}>
-              Comment tu t'appelles ?
+              Parle-moi
             </Animated.Text>
             <Animated.Text style={[styles.subtitle, { color: colors.textMuted }, subStyle]}>
-              Optionnel — je peux aussi t'appeler autrement.
+              Optionnel — tous les champs sont à ton rythme.
             </Animated.Text>
-            <Animated.View style={[styles.inputContainer, contentStyle]}>
+            <Animated.View style={[styles.formContainer, contentStyle]}>
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="Ton prénom"
+                placeholder="Ton prénom (optionnel)"
                 placeholderTextColor={colors.textFaint}
                 autoCapitalize="words"
                 returnKeyType="done"
                 style={[styles.nameField, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
               />
-            </Animated.View>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <Animated.Text style={[styles.title, { color: colors.text }, titleStyle]}>
-              Quel est ton statut ?
-            </Animated.Text>
-            <Animated.View style={[styles.chipsContainer, contentStyle]}>
-              {STATUSES.map((s) => {
-                const active = status === s.id
-                return (
-                  <Pressable
-                    key={s.id}
-                    onPress={() => setStatus(active ? null : s.id)}
-                    style={[
-                      styles.statusChip,
-                      { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.surface },
-                    ]}>
-                    <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 14, textAlign: 'center' }}>
-                      {s.label}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </Animated.View>
-          </>
-        )}
-
-        {step === 3 && (
-          <>
-            <Animated.Text style={[styles.title, { color: colors.text }, titleStyle]}>
-              Pourquoi es-tu venu ?
-            </Animated.Text>
-            <Animated.View style={[styles.chipsContainer, contentStyle]}>
-              {INTENTS.map((i) => {
-                const active = intent === i.id
-                return (
-                  <Pressable
-                    key={i.id}
-                    onPress={() => setIntent(active ? null : i.id)}
-                    style={[
-                      styles.intentChip,
-                      { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.surface },
-                    ]}>
-                    <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 14 }}>
-                      {i.label}
-                    </Text>
-                  </Pressable>
-                )
-              })}
+              <View style={styles.section}>
+                <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Ton statut</Text>
+                <View style={styles.chipsContainer}>
+                  {STATUSES.map((s) => {
+                    const active = status === s.id
+                    return (
+                      <Pressable
+                        key={s.id}
+                        onPress={() => setStatus(active ? null : s.id)}
+                        style={[
+                          styles.statusChip,
+                          { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.surface },
+                        ]}>
+                        <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 13, textAlign: 'center' }}>
+                          {s.label}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              </View>
+              <View style={styles.section}>
+                <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Pourquoi es-tu venu ?</Text>
+                <View style={styles.chipsContainer}>
+                  {INTENTS.map((i) => {
+                    const active = intent === i.id
+                    return (
+                      <Pressable
+                        key={i.id}
+                        onPress={() => setIntent(active ? null : i.id)}
+                        style={[
+                          styles.intentChip,
+                          { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.surface },
+                        ]}>
+                        <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_500Medium', fontSize: 13 }}>
+                          {i.label}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              </View>
             </Animated.View>
           </>
         )}
@@ -227,10 +217,10 @@ export default function OnboardingScreen() {
           onPressIn={() => {}}
           onPressOut={() => {}}
           onPress={canNext ? handleNext : handleStart}
-          disabled={step === 3 && pressed}
+          disabled={step === 1 && pressed}
           style={[styles.button, { backgroundColor: colors.accent }]}>
           <Text style={[styles.buttonText, { color: colors.bg }]}>
-            {step === 3 ? 'Commencer' : 'Suivant'}
+            {step === 1 ? 'Commencer' : 'Suivant'}
           </Text>
         </Pressable>
         <Text style={[styles.caption, { color: colors.textFaint }]}>
@@ -261,27 +251,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  inputContainer: { alignSelf: 'stretch', marginTop: 24 },
+  formContainer: { alignSelf: 'stretch', marginTop: 24, gap: 20, maxHeight: '60%' },
   nameField: {
     alignSelf: 'stretch',
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    fontFamily: 'Inter_400Regular',
-    fontSize: 16,
-  },
-  chipsContainer: { marginTop: 24, alignSelf: 'stretch', gap: 8 },
-  statusChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    height: 48,
     borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+  },
+  section: { gap: 8 },
+  sectionLabel: { fontFamily: 'Inter_500Medium', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignSelf: 'stretch' },
+  statusChip: {
+    flex: 1,
+    minWidth: '45%',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
   },
   intentChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
+    flex: 1,
+    minWidth: '45%',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     borderWidth: 1,
   },
   footer: { paddingBottom: 56, gap: 14, alignItems: 'center' },

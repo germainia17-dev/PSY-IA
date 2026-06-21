@@ -18,6 +18,9 @@ export type ConversationMeta = {
   preview: string
   createdAt: number
   updatedAt: number
+  // Renseignés après coup par le résumé de séance (best-effort, peuvent manquer).
+  summary?: string // « ce dont on a parlé », à la 2e personne
+  themes?: string[] // thèmes courts en minuscules (ex: ["études","stress"])
 }
 
 export type Conversation = ConversationMeta & {
@@ -137,6 +140,48 @@ export async function deleteConversation(id: string): Promise<void> {
   await AsyncStorage.removeItem(KEYS.convo(id))
   const index = await listConversations()
   await AsyncStorage.setItem(KEYS.index, JSON.stringify(index.filter((c) => c.id !== id)))
+}
+
+// Enregistre le résumé + les thèmes d'une séance, sur le blob ET dans l'index
+// (pour que l'historique les affiche sans charger chaque conversation). On garde
+// l'ancien si le nouveau est vide → une analyse ratée n'efface jamais un acquis.
+export async function saveSessionSummary(
+  id: string,
+  summary: string,
+  themes: string[],
+): Promise<void> {
+  const convo = await loadConversation(id)
+  if (!convo) return
+  const cleanThemes = themes
+    .map((t) => t.trim().toLowerCase())
+    .filter((t) => t.length > 0 && t.length <= 24)
+    .slice(0, 4)
+  const nextSummary = summary.trim().slice(0, 240) || convo.summary
+  const nextThemes = cleanThemes.length ? cleanThemes : convo.themes
+  const updated: Conversation = { ...convo, summary: nextSummary, themes: nextThemes }
+  await AsyncStorage.setItem(KEYS.convo(id), JSON.stringify(updated))
+
+  const index = await listConversations()
+  const next = index.map((m) =>
+    m.id === id ? { ...m, summary: nextSummary, themes: nextThemes } : m,
+  )
+  await AsyncStorage.setItem(KEYS.index, JSON.stringify(next))
+}
+
+// Thèmes récurrents agrégés sur les dernières séances, du plus fréquent au moins
+// fréquent. Alimente l'écran d'évolution (« thèmes récurrents ») et la relance
+// personnalisée. N'invente rien : compte ce qui a réellement été abordé.
+export async function getRecentThemes(
+  maxConvos = 12,
+): Promise<{ theme: string; count: number }[]> {
+  const list = (await listConversations()).slice(0, maxConvos)
+  const counts = new Map<string, number>()
+  for (const c of list) {
+    for (const t of c.themes ?? []) counts.set(t, (counts.get(t) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .map(([theme, count]) => ({ theme, count }))
+    .sort((a, b) => b.count - a.count)
 }
 
 // Pointeur vers la conversation ouverte (partagé entre chat et historique).

@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { Component, useEffect, type ReactNode } from 'react'
 import { Stack, useRouter } from 'expo-router'
-import { Linking, Platform, Pressable, Text } from 'react-native'
+import { Linking, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import {
   Inter_400Regular,
@@ -31,6 +31,36 @@ async function registerPushToken() {
       .eq('user_id', session.session.user.id)
   } catch (err) {
     console.error('Failed to register push token:', err)
+  }
+}
+
+// Filet de sécurité : toute erreur de rendu (ex. config manquante au démarrage)
+// affiche le message à l'écran au lieu de fermer l'app sans laisser de trace.
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#FBF1E4', padding: 24, justifyContent: 'center' }}>
+          <Text style={{ color: '#2A1207', fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
+            Une erreur est survenue au démarrage
+          </Text>
+          <ScrollView style={{ maxHeight: 300 }}>
+            <Text style={{ color: '#7A4A2A', fontSize: 13 }}>
+              {this.state.error.message}
+              {'\n\n'}
+              {this.state.error.stack}
+            </Text>
+          </ScrollView>
+        </View>
+      )
+    }
+    return this.props.children
   }
 }
 
@@ -65,7 +95,7 @@ export default function RootLayout() {
       if (data.session) syncConversations().catch(() => {})
     })
 
-    // Deep link : retour du magic link email (companion://auth/callback?code=...)
+    // Deep link : retour du magic link email (companionia://auth/callback?code=...)
     const handleUrl = async ({ url }: { url: string }) => {
       if (!url.includes('auth/callback')) return
       const ok = await handleAuthRedirect(url)
@@ -92,9 +122,11 @@ export default function RootLayout() {
   // Le provider de thème enveloppe toute la navigation : la palette active
   // (cream/nuit/foret/aurore) est ainsi disponible dans chaque écran et header.
   return (
-    <ThemeProvider>
-      <RootStack />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <RootStack />
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 
@@ -118,6 +150,7 @@ function RootStack() {
         contentStyle: { backgroundColor: colors.bg },
       }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="auth/callback" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
       <Stack.Screen name="settings" options={{ ...sharedModal, title: 'Paramètres' }} />
       <Stack.Screen name="history" options={{ ...sharedModal, title: 'Conversations' }} />
@@ -129,6 +162,7 @@ function RootStack() {
       <Stack.Screen name="evolution" options={{ ...sharedModal, title: 'Ton évolution' }} />
       <Stack.Screen name="policy" options={{ ...sharedModal, title: 'Politique & Confidentialité' }} />
       <Stack.Screen name="paywall" options={{ ...sharedModal, title: 'Companion Pro' }} />
+      <Stack.Screen name="analytics" options={{ ...sharedModal, title: 'Test Analytics' }} />
     </Stack>
   )
 }

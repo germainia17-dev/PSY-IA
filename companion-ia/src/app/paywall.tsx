@@ -15,19 +15,24 @@ import { Confetti } from '../components/confetti'
 import { Orb } from '../components/orb'
 import { type as typo } from '../constants/type'
 import { useTheme } from '../hooks/use-theme'
+import { logEvent } from '../lib/events'
 
 const FEATURES = [
   'Conversations illimitées chaque jour',
   'Thèmes visuels exclusifs (Nuit, Forêt, Aurore)',
   'Ton de réponse personnalisé',
   'Logo personnalisé dans l\'interface',
+  'Suivi de santé et évolution de l\'état psychologique',
 ]
 
 export default function PaywallScreen() {
   const colors = useTheme()
   const [showConfetti, setShowConfetti] = useState(false)
   const proPoll = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const { refresh } = usePro(() => setShowConfetti(true))
+  const { refresh } = usePro(() => {
+    setShowConfetti(true)
+    logEvent('pro_purchased')
+  })
 
   async function openPro(interval: PlanInterval) {
     const url = await getProUrl(interval)

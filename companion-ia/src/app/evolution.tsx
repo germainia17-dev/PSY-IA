@@ -11,155 +11,62 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Polyline, Defs, LinearGradient, Stop, Circle } from 'react-native-svg'
 import { usePro } from '../lib/use-pro'
 import { useTheme } from '../hooks/use-theme'
-import { listConversations, getMoods } from '../lib/storage'
+import { getDailyMetrics, moodWeekDelta, type MetricPoint, type Period } from '../lib/metrics'
 import { enableEvolutionReminder } from '../lib/notifications'
 import { type as typo } from '../constants/type'
 import { useRouter } from 'expo-router'
 
-type Period = 'week' | 'month' | 'year'
+const MIN_DAYS = 3 // en dessous, on motive plutôt que d'afficher une courbe vide
 
-function dayKey(ts: number): string {
-  const d = new Date(ts)
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+// Étiquette d'axe X à partir d'un jour "YYYY-MM-DD".
+function dayLabel(day: string, period: Period): string {
+  const [y, m, d] = day.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  return period === 'year'
+    ? date.toLocaleDateString('fr-FR', { month: 'short' })
+    : date.toLocaleDateString('fr-FR', { day: 'numeric' })
 }
 
-function getDaysBetween(startDate: Date, endDate: Date): Date[] {
-  const days: Date[] = []
-  const current = new Date(startDate)
-  while (current <= endDate) {
-    days.push(new Date(current))
-    current.setDate(current.getDate() + 1)
+type SeriePoint = { value: number; label: string }
+
+// Construit une série 0–100 pour un graphe donné : on saute les jours sans
+// donnée AVANT la première valeur, puis on reporte la dernière valeur connue
+// pour les trous internes (courbe continue sans inventer de tendance).
+function buildSeries(
+  points: MetricPoint[],
+  period: Period,
+  toPercent: (p: MetricPoint) => number | null,
+): SeriePoint[] {
+  const series: SeriePoint[] = []
+  let last: number | null = null
+  for (const p of points) {
+    const v = toPercent(p)
+    if (v != null) last = v
+    if (last == null) continue // trous de tête : on n'affiche pas encore
+    series.push({ value: last, label: dayLabel(p.day, period) })
   }
-  return days
+  return series
 }
 
-function getPeriodDates(period: Period): { start: Date; end: Date; label: string } {
-  const end = new Date()
-  end.setHours(23, 59, 59, 999)
-  let start = new Date(end)
-
-  switch (period) {
-    case 'week':
-      start.setDate(end.getDate() - 6)
-      return { start, end, label: 'Cette semaine' }
-    case 'month':
-      start.setDate(end.getDate() - 29)
-      return { start, end, label: 'Ce mois' }
-    case 'year':
-      start.setFullYear(end.getFullYear() - 1)
-      return { start, end, label: 'Cette année' }
-  }
-}
-
-type EvolutionPoint = {
-  date: string
-  score: number
-  displayDate: string
-}
-
-async function computeEvolution(period: Period): Promise<EvolutionPoint[]> {
-  const { start, end } = getPeriodDates(period)
-  const days = getDaysBetween(start, end)
-  const convos = await listConversations()
-  const moods = await getMoods()
-
-  // Map: jour → nombre de conversations + mood value
-  const dayData = new Map<
-    string,
-    { convos: number; moodValue: number | null }
-  >()
-
-  for (const day of days) {
-    const key = dayKey(day.getTime())
-    dayData.set(key, { convos: 0, moodValue: null })
-  }
-
-  for (const convo of convos) {
-    const key = dayKey(convo.updatedAt)
-    if (dayData.has(key)) {
-      const data = dayData.get(key)!
-      data.convos += 1
-    }
-  }
-
-  for (const mood of moods) {
-    if (dayData.has(mood.date)) {
-      const data = dayData.get(mood.date)!
-      data.moodValue = mood.value
-    }
-  }
-
-  // Compute score : conversations (30 pts chacune) + mood (20 pts), capped 100
-  const points: EvolutionPoint[] = []
-  let smoothedScore = 50 // valeur de départ neutre
-
-  for (const day of days) {
-    const key = dayKey(day.getTime())
-    const data = dayData.get(key)!
-    let rawScore = data.convos * 30 + (data.moodValue ? data.moodValue * 20 : 0)
-    rawScore = Math.min(rawScore, 100)
-
-    // Lissage sur 3 jours : moyenne mobile
-    smoothedScore = smoothedScore * 0.7 + rawScore * 0.3
-
-    const displayDate =
-      period === 'year'
-        ? day.toLocaleDateString('fr-FR', { month: 'short' })
-        : day.toLocaleDateString('fr-FR', { day: 'numeric' })
-
-    points.push({
-      date: key,
-      score: Math.round(smoothedScore),
-      displayDate,
-    })
-  }
-
-  return points
-}
-
-type ChartData = {
-  points: EvolutionPoint[]
-  minScore: number
-  maxScore: number
-}
-
-function computeChartData(points: EvolutionPoint[]): ChartData {
-  const scores = points.map((p) => p.score)
-  const minScore = Math.min(...scores, 0)
-  const maxScore = Math.max(...scores, 100)
-  return { points, minScore, maxScore }
-}
-
-function EvolutionChart({
-  data,
-  color,
-  height = 220,
-}: {
-  data: ChartData
-  color: string
-  height?: number
-}) {
+function PercentChart({ series, color }: { series: SeriePoint[]; color: string }) {
   const width = 320
+  const height = 200
   const padding = 30
   const chartWidth = width - padding * 2
   const chartHeight = height - padding * 2
 
-  const range = Math.max(data.maxScore - data.minScore, 20)
-  const polylinePoints = data.points
-    .map((p, i) => {
-      const x = (i / (data.points.length - 1)) * chartWidth + padding
-      const y =
-        height - padding - ((p.score - data.minScore) / range) * chartHeight
-      return `${x},${y}`
-    })
-    .join(' ')
+  // Une seule valeur : on duplique pour tracer une petite ligne plate visible.
+  const pts = series.length === 1 ? [series[0], series[0]] : series
 
-  const labelPoints = data.points
-    .map((p, i) => {
-      const skip = Math.max(1, Math.floor(data.points.length / 6))
-      return i % skip === 0 ? p : null
-    })
-    .filter(Boolean) as EvolutionPoint[]
+  const coords = pts.map((p, i) => {
+    const x = (i / (pts.length - 1)) * chartWidth + padding
+    const y = height - padding - (p.value / 100) * chartHeight
+    return { x, y }
+  })
+  const polyline = coords.map((c) => `${c.x},${c.y}`).join(' ')
+
+  const labelEvery = Math.max(1, Math.floor(pts.length / 6))
+  const labels = pts.filter((_, i) => i % labelEvery === 0)
 
   return (
     <View style={styles.chartContainer}>
@@ -170,73 +77,62 @@ function EvolutionChart({
             <Stop offset="100%" stopColor={color} stopOpacity="0.02" />
           </LinearGradient>
         </Defs>
-
-        {/* Axes grille */}
-        {[0, 25, 50, 75, 100].map((val) => {
-          const y =
-            height - padding - ((val - data.minScore) / range) * chartHeight
-          return (
-            <View key={`grid-${val}`} style={{ position: 'absolute' }}>
-              <Text
-                style={[
-                  styles.axisLabel,
-                  { position: 'absolute', left: 5, top: y - 8 },
-                ]}>
-                {val}%
-              </Text>
-            </View>
-          )
-        })}
-
-        {/* Courbe de remplissage */}
+        <Polyline points={polyline} fill="url(#gradFill)" stroke="none" />
         <Polyline
-          points={polylinePoints}
-          fill="url(#gradFill)"
-          stroke="none"
-          strokeWidth="0"
-        />
-
-        {/* Ligne de la courbe */}
-        <Polyline
-          points={polylinePoints}
+          points={polyline}
           fill="none"
           stroke={color}
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-
-        {/* Points de data */}
-        {data.points.map((p, i) => {
-          const x = (i / (data.points.length - 1)) * chartWidth + padding
-          const y =
-            height - padding - ((p.score - data.minScore) / range) * chartHeight
-          return (
-            <Circle
-              key={`point-${i}`}
-              cx={x}
-              cy={y}
-              r="3"
-              fill={color}
-              opacity="0.6"
-            />
-          )
-        })}
+        {coords.map((c, i) => (
+          <Circle key={`pt-${i}`} cx={c.x} cy={c.y} r="3" fill={color} opacity="0.6" />
+        ))}
       </Svg>
-
-      {/* Labels X */}
       <View style={[styles.labelsXContainer, { width }]}>
-        {labelPoints.map((p, i) => (
+        {labels.map((p, i) => (
           <Text
-            key={`label-${i}`}
+            key={`lab-${i}`}
             style={[
               styles.axisLabelX,
-              { marginLeft: (chartWidth / (labelPoints.length - 1)) * i - 15 },
+              { marginLeft: (chartWidth / Math.max(labels.length - 1, 1)) * i - 15 },
             ]}>
-            {p.displayDate}
+            {p.label}
           </Text>
         ))}
       </View>
+    </View>
+  )
+}
+
+function GraphCard({
+  title,
+  caption,
+  series,
+  color,
+  colors,
+}: {
+  title: string
+  caption: string
+  series: SeriePoint[]
+  color: string
+  colors: ReturnType<typeof useTheme>
+}) {
+  return (
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[typo.label as object, { color: colors.text }]}>{title}</Text>
+      {series.length === 0 ? (
+        <Text style={[typo.caption as object, { color: colors.textMuted, marginTop: 10 }]}>
+          Pas encore assez d'échanges pour ce graphe. Continue à parler, il se
+          remplira tout seul.
+        </Text>
+      ) : (
+        <PercentChart series={series} color={color} />
+      )}
+      <Text style={[typo.caption as object, { color: colors.textMuted, lineHeight: 18 }]}>
+        {caption}
+      </Text>
     </View>
   )
 }
@@ -247,42 +143,29 @@ export default function EvolutionScreen() {
   const router = useRouter()
 
   const [period, setPeriod] = useState<Period>('week')
-  const [chartData, setChartData] = useState<ChartData | null>(null)
+  const [points, setPoints] = useState<MetricPoint[]>([])
   const [loading, setLoading] = useState(true)
-  const [periodLabel, setPeriodLabel] = useState('')
 
   useEffect(() => {
-    if (pro) {
-      enableEvolutionReminder().catch(() => {})
-    }
+    if (pro) enableEvolutionReminder().catch(() => {})
   }, [pro])
 
   useEffect(() => {
     setLoading(true)
-    computeEvolution(period).then((points) => {
-      const data = computeChartData(points)
-      setChartData(data)
-      const { label } = getPeriodDates(period)
-      setPeriodLabel(label)
-      setLoading(false)
-    })
+    getDailyMetrics(period)
+      .then(setPoints)
+      .finally(() => setLoading(false))
   }, [period])
 
   if (!pro) {
     return (
-      <SafeAreaView
-        style={[styles.root, { backgroundColor: colors.bg }]}
-        edges={['bottom']}>
+      <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['bottom']}>
         <View
           style={[
             styles.gateContainer,
             { backgroundColor: colors.surface, borderColor: colors.border },
           ]}>
-          <Text
-            style={[
-              typo.title as object,
-              { color: colors.text, marginBottom: 16 },
-            ]}>
+          <Text style={[typo.title as object, { color: colors.text, marginBottom: 16 }]}>
             Réservé aux abonnés
           </Text>
           <Text
@@ -290,8 +173,8 @@ export default function EvolutionScreen() {
               typo.label as object,
               { color: colors.textMuted, marginBottom: 24, lineHeight: 20 },
             ]}>
-            Suis ta progression psychologique avec des graphiques détaillés et
-            des insights sur ton évolution.
+            Suis ton humeur, ton stress et ton engagement avec des graphiques
+            fiables, basés sur tes vraies conversations.
           </Text>
           <Pressable
             onPress={() => router.push('/paywall' as never)}
@@ -299,48 +182,31 @@ export default function EvolutionScreen() {
               styles.gateCta,
               { backgroundColor: colors.accent, opacity: pressed ? 0.8 : 1 },
             ]}>
-            <Text
-              style={[
-                typo.button as object,
-                { color: colors.accentTx },
-              ]}>
-              Débloquer
-            </Text>
+            <Text style={[typo.button as object, { color: colors.accentTx }]}>Débloquer</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     )
   }
 
+  const moodSeries = buildSeries(points, period, (p) =>
+    p.mood != null ? ((p.mood - 1) / 4) * 100 : null,
+  )
+  const stressSeries = buildSeries(points, period, (p) =>
+    p.stress != null ? ((p.stress - 1) / 4) * 100 : null,
+  )
+  // Engagement : 8 messages/jour = pleine activité (indice plafonné à 100).
+  const engagementSeries = buildSeries(points, period, (p) =>
+    p.messages > 0 ? Math.min(p.messages / 8, 1) * 100 : null,
+  )
+
+  const delta = moodWeekDelta(points)
+  const enoughData = points.length >= MIN_DAYS
+
   return (
-    <SafeAreaView
-      style={[styles.root, { backgroundColor: colors.bg }]}
-      edges={['bottom']}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={[typo.subtitle as object, { color: colors.text }]}>
-            {periodLabel}
-          </Text>
-          <Text
-            style={[
-              typo.caption as object,
-              { color: colors.textMuted, marginTop: 4 },
-            ]}>
-            Évolution en % approximatif
-          </Text>
-        </View>
-
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.accent} />
-          </View>
-        ) : chartData ? (
-          <EvolutionChart data={chartData} color={colors.accent} />
-        ) : null}
-
-        {/* Period selector */}
+    <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Sélecteur de période */}
         <View style={styles.periodSelector}>
           {(['week', 'month', 'year'] as const).map((p) => (
             <Pressable
@@ -349,42 +215,74 @@ export default function EvolutionScreen() {
               style={({ pressed }) => [
                 styles.periodPill,
                 period === p
-                  ? [
-                      { backgroundColor: colors.accent },
-                      styles.periodPillActive,
-                    ]
+                  ? [{ backgroundColor: colors.accent }, styles.periodPillActive]
                   : [{ backgroundColor: colors.surface, borderColor: colors.border }],
                 pressed && { opacity: 0.8 },
               ]}>
               <Text
                 style={[
                   typo.button as object,
-                  {
-                    color:
-                      period === p ? colors.accentTx : colors.text,
-                    fontSize: 13,
-                  },
+                  { color: period === p ? colors.accentTx : colors.text, fontSize: 13 },
                 ]}>
-                {p === 'week'
-                  ? '1S'
-                  : p === 'month'
-                    ? '1M'
-                    : '1A'}
+                {p === 'week' ? '1S' : p === 'month' ? '1M' : '1A'}
               </Text>
             </Pressable>
           ))}
         </View>
 
-        <View style={styles.infoBox}>
-          <Text
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.accent} />
+          </View>
+        ) : !enoughData ? (
+          <View
             style={[
-              typo.caption as object,
-              { color: colors.textMuted, lineHeight: 18 },
+              styles.card,
+              { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 24 },
             ]}>
-            Le score mesure tes conversations et ton humeur du jour, lissé sur
-            une moyenne mobile. Plus élevé = meilleure progression.
-          </Text>
-        </View>
+            <Text style={[typo.subtitle as object, { color: colors.text, marginBottom: 8 }]}>
+              Ton suivi démarre
+            </Text>
+            <Text style={[typo.label as object, { color: colors.textMuted, lineHeight: 20 }]}>
+              Reviens discuter quelques jours : tes graphiques d'humeur, de stress
+              et d'engagement se construiront à partir de tes vraies
+              conversations. Aucune donnée inventée.
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Encouragement HONNÊTE : seulement si la hausse est réelle. */}
+            {delta != null && delta > 0 ? (
+              <View style={[styles.banner, { backgroundColor: colors.accent }]}>
+                <Text style={[typo.label as object, { color: colors.accentTx }]}>
+                  +{delta}% d'humeur cette semaine. Continue, ça marche. ✦
+                </Text>
+              </View>
+            ) : null}
+
+            <GraphCard
+              title="Humeur générale"
+              caption="Déduite de tes échanges et de ton humeur du jour. Plus haut = mieux."
+              series={moodSeries}
+              color={colors.accent}
+              colors={colors}
+            />
+            <GraphCard
+              title="Stress"
+              caption="Niveau de tension perçu dans tes conversations. Plus bas = plus apaisé."
+              series={stressSeries}
+              color="#E0876A"
+              colors={colors}
+            />
+            <GraphCard
+              title="Capacité à parler"
+              caption="Ton engagement au fil des jours. Plus tu parles, plus je peux t'aider."
+              series={engagementSeries}
+              color="#7FA88B"
+              colors={colors}
+            />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   )
@@ -392,28 +290,30 @@ export default function EvolutionScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+  scrollContent: { paddingBottom: 40, paddingHorizontal: 16 },
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
   },
   chartContainer: {
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginVertical: 16,
-    paddingBottom: 20,
+    marginVertical: 12,
+    paddingBottom: 16,
+  },
+  banner: {
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 16,
+    marginBottom: 16,
+    alignItems: 'center',
   },
   labelsXContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 30,
     marginTop: -8,
-  },
-  axisLabel: {
-    fontSize: 11,
-    fontFamily: 'Inter_400Regular',
-    opacity: 0.5,
   },
   axisLabelX: {
     fontSize: 10,
@@ -423,8 +323,7 @@ const styles = StyleSheet.create({
   periodSelector: {
     flexDirection: 'row',
     gap: 10,
-    paddingHorizontal: 20,
-    marginVertical: 16,
+    paddingVertical: 16,
   },
   periodPill: {
     paddingHorizontal: 16,
@@ -434,12 +333,6 @@ const styles = StyleSheet.create({
   },
   periodPillActive: {
     borderWidth: 0,
-  },
-  infoBox: {
-    marginHorizontal: 20,
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 20,
   },
   loadingContainer: {
     height: 220,
