@@ -94,7 +94,11 @@ export default function AccountScreen() {
       setLinkedEmail(linked)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Connexion Google impossible'
-      notify('Erreur', msg)
+      if (msg.includes('non disponible en beta')) {
+        notify('Google indisponible', 'Utilise Email login à la place. C\'est plus simple!')
+      } else {
+        notify('Erreur', msg)
+      }
     } finally {
       setLoading(false)
     }

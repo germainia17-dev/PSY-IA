@@ -17,23 +17,34 @@ function configureGoogle() {
   googleConfigured = true
 }
 
-// Retourne true si la session Google a été créée. Lève une erreur en cas
-// d'échec réel ; retourne false si l'utilisateur a annulé.
+// Retourne true si la session Google a été créée. Retourne false si annulé
+// ou erreur dev (fallback à email). Lance erreur seulement si problème real.
 export async function signInWithGoogle(): Promise<boolean> {
   configureGoogle()
-  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
-  const response = await GoogleSignin.signIn()
-  if (!isSuccessResponse(response)) return false // annulé par l'utilisateur
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+    const response = await GoogleSignin.signIn()
+    if (!isSuccessResponse(response)) return false // annulé
 
-  const idToken = response.data.idToken
-  if (!idToken) throw new Error('Google : idToken manquant')
+    const idToken = response.data.idToken
+    if (!idToken) throw new Error('Google : idToken manquant')
 
-  const { error } = await supabase.auth.signInWithIdToken({
-    provider: 'google',
-    token: idToken,
-  })
-  if (error) throw error
-  return true
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken,
+    })
+    if (error) throw error
+    return true
+  } catch (err) {
+    // DEVELOPER_ERROR = clé de signature non configurée (normal en dev/beta)
+    // Fallback à email login au lieu de crasher
+    const msg = err instanceof Error ? err.message : ''
+    if (msg.includes('DEVELOPER_ERROR') || msg.includes('Failed to get document') || msg.includes('com.google.android.gms')) {
+      // C'est une erreur de configuration, pas une erreur réelle
+      throw new Error('Google Sign-in non disponible en beta. Utilise Email login à la place.')
+    }
+    throw err
+  }
 }
 
 // Upgrade une session anonyme en compte email (même user_id conservé).
