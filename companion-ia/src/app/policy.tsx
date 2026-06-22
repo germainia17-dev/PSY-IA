@@ -55,6 +55,9 @@ export default function PolicyScreen() {
       <View style={styles.tabBar}>
         <Pressable
           onPress={() => setTab('policy')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'policy' }}
+          accessibilityLabel="Politique"
           style={[
             styles.tab,
             tab === 'policy' && { borderBottomColor: colors.accent, borderBottomWidth: 2 },
@@ -69,6 +72,9 @@ export default function PolicyScreen() {
         </Pressable>
         <Pressable
           onPress={() => setTab('privacy')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'privacy' }}
+          accessibilityLabel="Confidentialité"
           style={[
             styles.tab,
             tab === 'privacy' && { borderBottomColor: colors.accent, borderBottomWidth: 2 },

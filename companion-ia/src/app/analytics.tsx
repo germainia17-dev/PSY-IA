@@ -70,7 +70,7 @@ export default function AnalyticsScreen() {
                 % of limit_reached → pro_purchased
               </Text>
 
-              <View style={[styles.metricRow, { marginTop: 12, paddingTopWidth: 1, paddingTop: 12, borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
+              <View style={[styles.metricRow, { marginTop: 12, paddingTop: 12, borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
                 <Text style={[typo.label as object, { color: colors.text }]}>
                   Evolution vs Upgrade
                 </Text>

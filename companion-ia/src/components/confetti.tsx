@@ -6,12 +6,13 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withTiming,
 } from 'react-native-reanimated'
+import { CONFETTI_COLORS } from '../constants/design'
 
-const COLORS = ['#FF5E5B', '#FFD93D', '#6BCB77', '#4D96FF', '#B983FF', '#FF9F45']
 const COUNT = 44
 const DURATION = 2200
 
@@ -23,7 +24,7 @@ function Piece({ width, height, index }: PieceProps) {
     startX: Math.random() * width,
     drift: (Math.random() - 0.5) * 180,
     size: 7 + Math.random() * 9,
-    color: COLORS[index % COLORS.length],
+    color: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
     delay: Math.random() * 280,
     rot: (Math.random() - 0.5) * 720,
   }))
@@ -62,14 +63,16 @@ function Piece({ width, height, index }: PieceProps) {
 
 export function Confetti({ visible, onDone }: { visible: boolean; onDone: () => void }) {
   const { width, height } = useWindowDimensions()
+  const reduced = useReducedMotion()
 
   useEffect(() => {
     if (!visible) return
-    const timer = setTimeout(onDone, DURATION + 450)
+    // Reduced-motion : pas de pluie de confettis — on solde l'état tout de suite.
+    const timer = setTimeout(onDone, reduced ? 0 : DURATION + 450)
     return () => clearTimeout(timer)
-  }, [visible, onDone])
+  }, [visible, onDone, reduced])
 
-  if (!visible) return null
+  if (!visible || reduced) return null
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>

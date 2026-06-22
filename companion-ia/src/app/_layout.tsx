@@ -9,11 +9,13 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter'
+import { Fraunces_500Medium, Fraunces_600SemiBold } from '@expo-google-fonts/fraunces'
 import { configureNotifications } from '../lib/notifications'
 import { handleAuthRedirect } from '../lib/auth'
 import { pullConversations, syncConversations } from '../lib/sync'
 import { supabase } from '../lib/supabase'
 import { ThemeProvider, useTheme } from '../lib/theme'
+import { dusk } from '../constants/design'
 
 async function registerPushToken() {
   if (Platform.OS === 'web') return
@@ -46,12 +48,12 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   render() {
     if (this.state.error) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#FBF1E4', padding: 24, justifyContent: 'center' }}>
-          <Text style={{ color: '#2A1207', fontSize: 18, fontWeight: '700', marginBottom: 12 }}>
+        <View style={{ flex: 1, backgroundColor: dusk.bg, padding: 24, justifyContent: 'center' }}>
+          <Text style={{ color: dusk.text, fontSize: 18, fontFamily: 'Inter_700Bold', marginBottom: 12 }}>
             Une erreur est survenue au démarrage
           </Text>
           <ScrollView style={{ maxHeight: 300 }}>
-            <Text style={{ color: '#7A4A2A', fontSize: 13 }}>
+            <Text style={{ color: dusk.textMuted, fontSize: 13 }}>
               {this.state.error.message}
               {'\n\n'}
               {this.state.error.stack}
@@ -72,8 +74,8 @@ function ModalClose({ color }: { color: string }) {
   // URL en web, ou après un replace). On retombe alors sur l'accueil.
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'))
   return (
-    <Pressable onPress={close} hitSlop={12} style={{ paddingHorizontal: 4 }}>
-      <Text style={{ fontSize: 22, color, lineHeight: 24 }}>✕</Text>
+    <Pressable onPress={close} hitSlop={12} style={{ paddingHorizontal: 4 }} accessibilityRole="button" accessibilityLabel="Fermer">
+      <Text style={{ fontSize: 22, color, lineHeight: 24 }} accessibilityElementsHidden importantForAccessibility="no">✕</Text>
     </Pressable>
   )
 }
@@ -84,6 +86,8 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Fraunces_500Medium,
+    Fraunces_600SemiBold,
   })
 
   useEffect(() => {
@@ -120,7 +124,7 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null
 
   // Le provider de thème enveloppe toute la navigation : la palette active
-  // (cream/nuit/foret/aurore) est ainsi disponible dans chaque écran et header.
+  // (dusk/cream/foret/aurore) est ainsi disponible dans chaque écran et header.
   return (
     <ErrorBoundary>
       <ThemeProvider>
@@ -148,7 +152,6 @@ function RootStack() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },
-        animationEnabled: true,
         animationDuration: 250,
       }}>
       <Stack.Screen name="index" />

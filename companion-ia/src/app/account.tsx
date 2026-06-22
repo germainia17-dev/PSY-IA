@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { getLinkedEmail, linkEmail, signInWithEmail, signInWithGoogle, signOut } from '../lib/auth'
 import { confirm, notify } from '../lib/confirm'
-import { pullConversations, syncConversations } from '../lib/sync'
 import { supabase } from '../lib/supabase'
 import { type as typo } from '../constants/type'
 import { useTheme } from '../hooks/use-theme'
@@ -87,18 +86,16 @@ export default function AccountScreen() {
     setLoading(true)
     try {
       const ok = await signInWithGoogle()
-      if (!ok) return // annulé
-      await pullConversations().catch(() => {})
-      await syncConversations().catch(() => {})
-      const linked = await getLinkedEmail().catch(() => null)
-      setLinkedEmail(linked)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Connexion Google impossible'
-      if (msg.includes('non disponible en beta')) {
-        notify('Google indisponible', 'Utilise Email login à la place. C\'est plus simple!')
-      } else {
-        notify('Erreur', msg)
+      if (ok) {
+        // Session créée → on rejoint l'accueil, comme le fait le magic link
+        // via auth/callback. Sans ça l'utilisateur reste bloqué sur ce modal.
+        router.replace('/')
+        return
       }
+      // Annulation (ok=false) : silencieux, l'utilisateur a fermé la fenêtre.
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue'
+      notify('Connexion Google échouée', msg)
     } finally {
       setLoading(false)
     }
@@ -161,7 +158,7 @@ export default function AccountScreen() {
                 compte sur un nouvel appareil, utilise le lien magique envoyé à cet email.
               </Text>
               <TouchableOpacity
-                style={[styles.btn, styles.btnDestructive]}
+                style={[styles.btn, styles.btnDestructive, { backgroundColor: colors.error }]}
                 onPress={handleSignOut}
                 activeOpacity={0.8}>
                 <Text style={[typo.button as object, { color: '#fff' }]}>Se déconnecter</Text>
@@ -198,6 +195,28 @@ export default function AccountScreen() {
                   Lie un email pour retrouver tes conversations et ton abonnement sur n'importe quel
                   appareil. Un simple lien magique — aucun mot de passe.
                 </Text>
+
+                <TouchableOpacity
+                  style={[styles.btn, styles.btnGoogle, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={handleGoogle}
+                  disabled={loading}
+                  activeOpacity={0.85}>
+                  {loading
+                    ? <ActivityIndicator color={colors.text} />
+                    : (
+                      <View style={styles.googleRow}>
+                        <Text style={styles.googleG}>G</Text>
+                        <Text style={[typo.button as object, { color: colors.text }]}>Continuer avec Google</Text>
+                      </View>
+                    )
+                  }
+                </TouchableOpacity>
+
+                <View style={styles.dividerRow}>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                  <Text style={[typo.caption as object, { color: colors.textFaint }]}>ou</Text>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                </View>
 
                 <TextInput
                   style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.bg }]}
@@ -254,25 +273,7 @@ export default function AccountScreen() {
                 </TouchableOpacity>
               </View>
             </>
-          ) : (
-            // — Compte lié + Google option —
-            <>
-              {Platform.OS !== 'web' && (
-                <>
-                  <TouchableOpacity
-                    style={[styles.btn, styles.googleBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                    onPress={handleGoogle}
-                    disabled={loading}
-                    activeOpacity={0.85}>
-                    {loading
-                      ? <ActivityIndicator color={colors.accent} />
-                      : <Text style={[typo.button as object, { color: colors.text }]}>Lier Google aussi</Text>
-                    }
-                  </TouchableOpacity>
-                </>
-              )}
-            </>
-          )}
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -298,8 +299,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 4,
   },
-  btnDestructive: { backgroundColor: '#A8331F', marginTop: 16 },
-  googleBtn: { borderWidth: StyleSheet.hairlineWidth, marginTop: 0 },
+  btnDestructive: { marginTop: 16 },
+  btnGoogle: { borderWidth: StyleSheet.hairlineWidth },
+  googleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  googleG: { fontFamily: 'Inter_600SemiBold', fontSize: 17, color: '#4285F4' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
 })

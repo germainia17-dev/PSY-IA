@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import { palettes } from '../constants/design';
 
 const p = palettes.light;
@@ -10,11 +11,19 @@ export type TypingDotsProps = {
 };
 
 export function TypingDots({ color = p.textMuted, size = 8 }: TypingDotsProps) {
+  const reduced = useReducedMotion();
   const a = useRef(new Animated.Value(0.3)).current;
   const b = useRef(new Animated.Value(0.3)).current;
   const c = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
+    // Reduced-motion : trois points statiques et lisibles, sans pulsation.
+    if (reduced) {
+      a.setValue(0.7);
+      b.setValue(0.7);
+      c.setValue(0.7);
+      return;
+    }
     const make = (v: Animated.Value, delay: number) =>
       Animated.loop(
         Animated.sequence([
@@ -45,7 +54,7 @@ export function TypingDots({ color = p.textMuted, size = 8 }: TypingDotsProps) {
       B.stop();
       C.stop();
     };
-  }, [a, b, c]);
+  }, [a, b, c, reduced]);
 
   const dotStyle = (v: Animated.Value) => ({
     opacity: v,

@@ -33,9 +33,11 @@ const ACCENT_LIST = (Object.entries(accents) as [AccentId, { accent: string }][]
   ([id, t]) => ({ id, color: t.accent }),
 )
 
-const THEMES: { id: ThemeId; label: string; desc: string }[] = [
-  { id: 'cream', label: 'Crème', desc: 'Le thème par défaut, papier chaud' },
-  { id: 'nuit', label: 'Nuit douce', desc: 'Ambiance lampe de chevet tamisée' },
+// `free` : confort de lecture (pénombre + clair) accessible à tous. Forêt/Aurore
+// restent décoratifs et réservés au Pro.
+const THEMES: { id: ThemeId; label: string; desc: string; free?: boolean }[] = [
+  { id: 'dusk', label: 'Pénombre', desc: 'Le défaut : lampe de chevet, l’orbe pour seule lumière', free: true },
+  { id: 'cream', label: 'Clair', desc: 'Papier chaud, pour le plein jour', free: true },
   { id: 'foret', label: 'Forêt', desc: 'Verts profonds et apaisants' },
   { id: 'aurore', label: 'Aurore', desc: 'Dégradés pastel du petit matin' },
 ]
@@ -169,27 +171,30 @@ export default function PersonalizationScreen() {
                 <Pressable
                   key={a.id}
                   onPress={() => setAccent(a.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`Couleur d'accent ${a.id}`}
                   style={[styles.swatch, { backgroundColor: a.color, borderColor: selected ? colors.text : 'transparent' }]}>
-                  {selected && <Text style={styles.swatchCheck}>✓</Text>}
+                  {selected && <Text style={[styles.swatchCheck, { color: accents[a.id].accentTx }]} accessibilityElementsHidden importantForAccessibility="no">✓</Text>}
                 </Pressable>
               )
             })}
           </View>
         </Section>
 
-        {/* ── Premium ───────────────────────────── */}
-        <Section label="Thème" pro colors={colors}>
+        {/* ── Confort de lecture (gratuit) + thèmes décoratifs (Pro) ── */}
+        <Section label="Thème" colors={colors}>
           {THEMES.map((t, i) => (
             <OptionRow
               key={t.id}
               label={t.label}
               desc={t.desc}
-              selected={pro && themeId === t.id}
-              locked={!pro}
+              selected={themeId === t.id}
+              locked={!pro && !t.free}
               accent={accent}
               colors={colors}
               first={i === 0}
-              onPress={() => (pro ? setTheme(t.id) : goPro())}
+              onPress={() => (t.free || pro ? setTheme(t.id) : goPro())}
             />
           ))}
         </Section>
@@ -279,6 +284,9 @@ function OptionRow({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected, disabled: false }}
+      accessibilityLabel={`${label}. ${desc}${locked ? '. Réservé à Companion Pro' : ''}`}
       style={({ pressed }) => [
         styles.optionRow,
         !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
@@ -315,7 +323,7 @@ const styles = StyleSheet.create({
   previewEmpty: { borderWidth: StyleSheet.hairlineWidth, borderStyle: 'dashed' },
   section: { gap: 8 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 4 },
-  sectionLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8 },
+  sectionLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8 },
   proBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   proBadgeTx: { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
   sectionBody: { borderRadius: 16, padding: 16, gap: 10, borderWidth: StyleSheet.hairlineWidth },
@@ -328,7 +336,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 3,
   },
-  swatchCheck: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  swatchCheck: { fontSize: 18, fontFamily: 'Inter_700Bold' },
   optionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5 },

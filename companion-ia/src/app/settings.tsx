@@ -75,7 +75,9 @@ export default function SettingsScreen() {
 
         {/* Profile card */}
         <Pressable
-          style={({ pressed }) => [styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}
+          style={({ pressed }) => [styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow, opacity: pressed ? 0.75 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel={linkedEmail ? `Mon compte : ${linkedEmail}` : 'Mon compte. Sans compte, sauvegarde tes conversations'}
           onPress={() => router.push('/account')}>
           <View style={[styles.profileAvatar, { backgroundColor: colors.accent }]}>
             <Text style={[styles.profileInitial, { color: colors.accentTx }]}>
@@ -151,10 +153,10 @@ export default function SettingsScreen() {
         ) : (
           <Pressable onPress={() => router.push('/paywall')} style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}>
             <LinearGradient
-              colors={[colors.accent, '#8B4A1E']}
+              colors={[...colors.gradientProCta]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.proCta}>
+              style={[styles.proCta, { shadowColor: colors.accent }]}>
               <View style={[styles.proCtaIcon, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
                 <Ionicons name="diamond-outline" size={22} color="white" />
               </View>
@@ -221,7 +223,7 @@ function Section({ label, children, colors }: { label: string; children: React.R
         <View style={[styles.sectionDot, { backgroundColor: colors.accent }]} />
         <Text style={[styles.sectionLabel, { color: colors.textFaint }]}>{label.toUpperCase()}</Text>
       </View>
-      <View style={[styles.sectionBody, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.sectionBody, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow }]}>
         {children}
       </View>
     </View>
@@ -245,7 +247,11 @@ function NavRow({
 }) {
   return (
     <>
-      <Pressable style={({ pressed }) => [styles.navRow, { opacity: pressed ? 0.6 : 1 }]} onPress={onPress}>
+      <Pressable
+        style={({ pressed }) => [styles.navRow, { opacity: pressed ? 0.6 : 1 }]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}. ${subtitle}`}>
         <View style={[styles.iconWrap, { backgroundColor: colors.accentSoft }]}>
           <Ionicons name={icon} size={18} color={colors.accent} />
         </View>
@@ -271,7 +277,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    shadowColor: '#1A0A03',
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 2 },
@@ -289,12 +294,11 @@ const styles = StyleSheet.create({
   section: { gap: 8 },
   sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 4 },
   sectionDot: { width: 5, height: 5, borderRadius: 3 },
-  sectionLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.2 },
+  sectionLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1.2 },
   sectionBody: {
     borderRadius: 18,
     paddingHorizontal: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    shadowColor: '#1A0A03',
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -314,7 +318,6 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#C77A4A',
     shadowOpacity: 0.3,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },

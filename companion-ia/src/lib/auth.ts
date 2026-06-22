@@ -1,50 +1,33 @@
-import {
-  GoogleSignin,
-  isSuccessResponse,
-} from '@react-native-google-signin/google-signin'
+import * as WebBrowser from 'expo-web-browser'
 import { supabase } from './supabase'
 
-// Connexion Google native → on échange l'idToken Google contre une session
-// Supabase (provider 'google'). Le webClientId est l'OAuth *Web* client de
-// Google Cloud (cf. EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID). Nécessite : provider
-// Google activé dans Supabase + un build natif (le module ne marche pas en Expo Go).
-let googleConfigured = false
-function configureGoogle() {
-  if (googleConfigured) return
-  GoogleSignin.configure({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  })
-  googleConfigured = true
-}
+// Termine proprement une session d'auth web laissée ouverte (retour app).
+WebBrowser.maybeCompleteAuthSession()
 
-// Retourne true si la session Google a été créée. Retourne false si annulé
-// ou erreur dev (fallback à email). Lance erreur seulement si problème real.
+// Auth = magic link email OU « Continuer avec Google » (flux web OAuth).
+// L'app marche en session anonyme ; lier un email/Google sert seulement à
+// retrouver son historique sur un autre appareil. Cf. positionnement
+// « sans compte » : aucune connexion n'est obligatoire.
+
+// Connexion Google par flux web OAuth (PAS le SDK natif).
+// On ouvre la page de connexion Google classique dans un onglet sécurisé ;
+// Google renvoie sur companionia://auth/callback?code=... que l'on échange
+// contre une session — exactement le même mécanisme que le magic link.
+// Aucun SHA-1 / client Android requis : Supabase gère le callback web.
 export async function signInWithGoogle(): Promise<boolean> {
-  configureGoogle()
-  try {
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
-    const response = await GoogleSignin.signIn()
-    if (!isSuccessResponse(response)) return false // annulé
+  const redirectTo = 'companionia://auth/callback'
 
-    const idToken = response.data.idToken
-    if (!idToken) throw new Error('Google : idToken manquant')
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo, skipBrowserRedirect: true },
+  })
+  if (error) throw error
+  if (!data.url) throw new Error('URL de connexion Google manquante.')
 
-    const { error } = await supabase.auth.signInWithIdToken({
-      provider: 'google',
-      token: idToken,
-    })
-    if (error) throw error
-    return true
-  } catch (err) {
-    // DEVELOPER_ERROR = clé de signature non configurée (normal en dev/beta)
-    // Fallback à email login au lieu de crasher
-    const msg = err instanceof Error ? err.message : ''
-    if (msg.includes('DEVELOPER_ERROR') || msg.includes('Failed to get document') || msg.includes('com.google.android.gms')) {
-      // C'est une erreur de configuration, pas une erreur réelle
-      throw new Error('Google Sign-in non disponible en beta. Utilise Email login à la place.')
-    }
-    throw err
-  }
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
+  if (result.type !== 'success' || !result.url) return false
+
+  return handleAuthRedirect(result.url)
 }
 
 // Upgrade une session anonyme en compte email (même user_id conservé).
@@ -92,10 +75,14 @@ export async function handleAuthRedirect(url: string): Promise<boolean> {
 }
 
 // Retourne l'email lié à la session courante, ou null si compte anonyme.
+// IMPORTANT : un user anonyme Supabase a email = "" (chaîne vide), PAS null.
+// On utilise `|| null` (et non `?? null`) pour convertir "" en null, sinon
+// l'écran compte tombe dans la branche finale `: null` et s'affiche VIDE
+// (ni spinner, ni formulaire, ni bouton Google). Bug vérifié 2026-06-22.
 export async function getLinkedEmail(): Promise<string | null> {
   const { data } = await supabase.auth.getUser()
   const email = data.user?.email
-  return email ?? null
+  return email || null
 }
 
 export async function signOut(): Promise<void> {

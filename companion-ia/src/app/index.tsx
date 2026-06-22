@@ -67,6 +67,8 @@ function haptic(kind: 'send' | 'receive' | 'limit') {
 
 // Échelle d'humeur (index 0 → valeur 1). Un seul tap, sur conversation neuve.
 const MOODS = ['😔', '😕', '😐', '🙂', '😄']
+// Libellés lecteur d'écran (l'emoji seul n'est pas explicite à l'oral).
+const MOOD_LABELS = ['Très mal', 'Plutôt mal', 'Neutre', 'Plutôt bien', 'Très bien']
 
 export default function ChatScreen() {
   const colors = useTheme()
@@ -90,19 +92,13 @@ export default function ChatScreen() {
   const inputRef = useRef<TextInput>(null)
   const animateFrom = useRef(0) // index à partir duquel les bulles s'animent
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const promoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY).then((v) => setOnboarded(v === '1'))
     getLinkedEmail().then((email) => setHasAccount(!!email)).catch(() => setHasAccount(false))
-    // Show promo modal 2 seconds after app launch if not shown and not pro
-    promoTimer.current = setTimeout(async () => {
-      const shown = await AsyncStorage.getItem('@companion_promo_shown')
-      const pro = await isPro()
-      if (!shown && !pro) setShowPromo(true)
-    }, 2000)
+    // Pas de promo au lancement à froid : on ne propose Pro qu'après avoir livré
+    // de la valeur (cf. handleSend, après quelques échanges).
     return () => {
       if (speakTimer.current) clearTimeout(speakTimer.current)
-      if (promoTimer.current) clearTimeout(promoTimer.current)
     }
   }, [])
 
@@ -204,6 +200,13 @@ export default function ChatScreen() {
       if (userTurns === 1 && Platform.OS !== 'web' && !(await reminderAsked())) {
         setAskReminder(true)
       }
+
+      // Promo Pro : seulement après quelques échanges — la valeur est livrée,
+      // jamais une pub à froid au lancement. Une seule fois, hors abonnés.
+      if (userTurns >= 3) {
+        const shown = await AsyncStorage.getItem('@companion_promo_shown')
+        if (!shown && !(await isPro())) setShowPromo(true)
+      }
     } catch (err) {
       if (err instanceof ChatError && err.code === 'limit_reached') {
         haptic('limit')
@@ -291,21 +294,23 @@ export default function ChatScreen() {
           <Pressable
             onPress={() => router.push('/journey')}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Ta série de présence : ${streak} ${streak > 1 ? 'jours' : 'jour'}`}
             style={[styles.streakPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="flame" size={13} color={colors.accent} />
             <Text style={{ color: colors.text, fontFamily: 'Inter_600SemiBold', fontSize: 13 }}>{streak}</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={handleNew} style={styles.iconBtn} hitSlop={8}>
+        <Pressable onPress={handleNew} style={styles.iconBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Nouvelle conversation">
           <Ionicons name="add" size={22} color={colors.textMuted} />
         </Pressable>
-        <Pressable onPress={() => router.push('/history')} style={styles.iconBtn} hitSlop={8}>
+        <Pressable onPress={() => router.push('/history')} style={styles.iconBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Conversations">
           <Ionicons name="time-outline" size={20} color={colors.textMuted} />
         </Pressable>
-        <Pressable onPress={() => router.push('/evolution' as never)} style={styles.iconBtn} hitSlop={8}>
+        <Pressable onPress={() => router.push('/evolution' as never)} style={styles.iconBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Ton évolution">
           <Ionicons name="trending-up-outline" size={20} color={colors.textMuted} />
         </Pressable>
-        <Pressable onPress={() => router.push('/settings')} style={styles.iconBtn} hitSlop={8}>
+        <Pressable onPress={() => router.push('/settings')} style={styles.iconBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Paramètres">
           <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
         </Pressable>
       </View>
@@ -337,8 +342,13 @@ export default function ChatScreen() {
                   <Text style={[styles.moodLabel, { color: colors.textFaint }]}>COMMENT TU TE SENS ?</Text>
                   <View style={styles.moodEmojis}>
                     {MOODS.map((emoji, i) => (
-                      <Pressable key={i} onPress={() => pickMood(i + 1)} hitSlop={6}>
-                        <Text style={{ fontSize: 30 }}>{emoji}</Text>
+                      <Pressable
+                        key={i}
+                        onPress={() => pickMood(i + 1)}
+                        hitSlop={6}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Humeur : ${MOOD_LABELS[i]} (${i + 1} sur 5)`}>
+                        <Text style={{ fontSize: 30 }} accessibilityElementsHidden importantForAccessibility="no">{emoji}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -422,6 +432,7 @@ export default function ChatScreen() {
               onChangeText={setInput}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
+              accessibilityLabel="Écris ton message"
               placeholder="Dis-moi ce que tu ressens…"
               placeholderTextColor={colors.textFaint}
               multiline
@@ -445,8 +456,11 @@ export default function ChatScreen() {
               ]}
               onPress={handleSend}
               disabled={!hasText || sending}
+              accessibilityRole="button"
+              accessibilityLabel="Envoyer"
+              accessibilityState={{ disabled: !hasText || sending }}
               activeOpacity={0.8}>
-              <Text style={{ color: hasText && !sending ? colors.accentTx : colors.textFaint, fontSize: 18, fontWeight: '600' }}>
+              <Text style={{ color: hasText && !sending ? colors.accentTx : colors.textFaint, fontSize: 18, fontFamily: 'Inter_600SemiBold' }} accessibilityElementsHidden importantForAccessibility="no">
                 ↑
               </Text>
             </TouchableOpacity>
@@ -492,7 +506,7 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   moodRow: { marginTop: 28, alignItems: 'center', gap: 4 },
-  moodLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8 },
+  moodLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8 },
   moodEmojis: { flexDirection: 'row', gap: 14, marginTop: 6 },
   list: { paddingHorizontal: 16, paddingVertical: 12 },
   typingOrb: { marginTop: 14, alignSelf: 'flex-start', marginLeft: 4 },
@@ -515,12 +529,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   limitCard: {
     alignItems: 'center',

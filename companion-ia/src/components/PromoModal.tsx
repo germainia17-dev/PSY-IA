@@ -24,11 +24,11 @@ export function PromoModal({ visible, onDismiss, colors, offers }: PromoModalPro
       animationType="fade"
       onRequestClose={onDismiss}
     >
-      <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
+      <View style={[styles.overlay, { backgroundColor: colors.scrim }]}>
         <View style={[styles.card, { backgroundColor: colors.bg, borderColor: colors.border }]}>
           {/* Close button */}
-          <Pressable onPress={onDismiss} style={styles.closeBtn}>
-            <Text style={{ fontSize: 20, color: colors.textFaint }}>✕</Text>
+          <Pressable onPress={onDismiss} style={styles.closeBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Fermer">
+            <Text style={{ fontSize: 20, color: colors.textFaint }} accessibilityElementsHidden importantForAccessibility="no">✕</Text>
           </Pressable>
 
           {/* Content */}
@@ -52,7 +52,9 @@ export function PromoModal({ visible, onDismiss, colors, offers }: PromoModalPro
           {/* CTA */}
           <Pressable
             style={[styles.cta, { backgroundColor: colors.accent }]}
-            onPress={handleViewOffer}>
+            onPress={handleViewOffer}
+            accessibilityRole="button"
+            accessibilityLabel="Voir l'offre Companion Pro">
             <Text style={[typo.button as object, { color: colors.accentTx }]}>Voir l'offre</Text>
           </Pressable>
 

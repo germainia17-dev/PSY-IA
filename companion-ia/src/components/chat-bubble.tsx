@@ -3,6 +3,7 @@ import { StyleSheet, Text, useColorScheme } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, {
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
@@ -26,14 +27,17 @@ export function ChatBubble({
   const isUser = message.role === 'user'
   const scheme = useColorScheme()
   const isDark = scheme !== 'light'
+  const reduced = useReducedMotion()
+  // Reduced-motion : la bulle apparaît directement, sans glisser ni grossir.
+  const shouldAnimate = animate && !reduced
 
-  const progress = useSharedValue(animate ? 0 : 1)
-  const translateY = useSharedValue(animate ? (isUser ? 20 : 12) : 0)
-  const translateX = useSharedValue(animate && !isUser ? -8 : 0)
-  const scale = useSharedValue(animate ? (isUser ? 0.96 : 0.92) : 1)
+  const progress = useSharedValue(shouldAnimate ? 0 : 1)
+  const translateY = useSharedValue(shouldAnimate ? (isUser ? 20 : 12) : 0)
+  const translateX = useSharedValue(shouldAnimate && !isUser ? -8 : 0)
+  const scale = useSharedValue(shouldAnimate ? (isUser ? 0.96 : 0.92) : 1)
 
   useEffect(() => {
-    if (!animate) return
+    if (!shouldAnimate) return
     const spring = isUser ? SPRING.snappy : SPRING.soft
     progress.value = withTiming(1, { duration: isUser ? 180 : 300 })
     translateY.value = withSpring(0, spring)
@@ -55,6 +59,8 @@ export function ChatBubble({
   if (isUser) {
     return (
       <Animated.View
+        accessible
+        accessibilityLabel={`Toi : ${message.content}`}
         style={[
           styles.bubble,
           styles.user,
@@ -71,7 +77,7 @@ export function ChatBubble({
   // plat. Hairline du thème pour décoller du fond.
   void isDark
   return (
-    <Animated.View style={[styles.assistantWrap, style]}>
+    <Animated.View accessible accessibilityLabel={`Companion : ${message.content}`} style={[styles.assistantWrap, style]}>
       <LinearGradient
         colors={[colors.bubbleAsst, colors.surface]}
         start={{ x: 0, y: 0 }}

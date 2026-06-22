@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
+import { fetchRemotePersonalization, pushPersonalization } from './profile-sync'
 
 // Sur web (même machine que Ollama) → localhost. Sur mobile → IP du Mac.
 const DEFAULT_OLLAMA_URL =
@@ -34,19 +35,19 @@ export type MemoryFact = {
 }
 
 // Préférences de personnalisation visuelle. Restent sur l'appareil.
-// `avatar` + `accent` sont gratuits ; `theme` + `tone` sont réservés au Pro.
-// (Application à l'IA / au thème global = étape 2 — ici on ne fait que stocker.)
+// `logo` + `accent` sont gratuits ; `tone` réservé au Pro. `theme` : Pénombre
+// (dusk, défaut) + Clair (cream) gratuits, Forêt/Aurore réservés au Pro.
 export type Personalization = {
   logo: string | null // data URI du logo uploadé par l'utilisateur (null = aucun)
   accent: string // id de couleur d'accent (cf. ACCENTS dans l'écran)
-  theme: string // id de thème premium (Pro)
+  theme: string // id de thème (dusk défaut)
   tone: string // id de ton de l'IA premium (Pro)
 }
 
 export const DEFAULT_PERSONALIZATION: Personalization = {
   logo: null,
   accent: 'terracotta',
-  theme: 'cream',
+  theme: 'dusk', // défaut de marque « lampe de chevet » (cf. DEFAULT_THEME_ID)
   tone: 'doux',
 }
 
@@ -309,9 +310,29 @@ export async function getPersonalization(): Promise<Personalization> {
 }
 
 // Applique une mise à jour partielle et renvoie l'état complet enregistré.
+// Le local fait foi pour l'UI immédiate ; on pousse ensuite vers le backend
+// (best-effort) pour que le choix suive l'utilisateur sur ses autres appareils.
 export async function setPersonalization(patch: Partial<Personalization>): Promise<Personalization> {
   const current = await getPersonalization()
   const next = { ...current, ...patch }
+  await AsyncStorage.setItem(KEYS.personalization, JSON.stringify(next))
+  void pushPersonalization(next) // fire-and-forget, jamais bloquant
+  return next
+}
+
+// Récupère la personnalisation distante (après login / au lancement) et la fond
+// dans le local SANS re-pousser (évite la boucle pull→push). Renvoie l'état
+// fusionné, ou le local inchangé si rien à distance. Le logo reste local.
+export async function pullPersonalization(): Promise<Personalization> {
+  const current = await getPersonalization()
+  const remote = await fetchRemotePersonalization()
+  if (!remote) return current
+  const next: Personalization = {
+    ...current,
+    accent: remote.accent || current.accent,
+    theme: remote.theme || current.theme,
+    tone: remote.tone || current.tone,
+  }
   await AsyncStorage.setItem(KEYS.personalization, JSON.stringify(next))
   return next
 }

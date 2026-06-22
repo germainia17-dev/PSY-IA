@@ -91,7 +91,10 @@ export default function HistoryScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
             ]}
             onPress={() => openConvo(item.id)}
-            onLongPress={() => confirmDelete(item)}>
+            onLongPress={() => confirmDelete(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Conversation : ${item.title}`}
+            accessibilityHint="Appuie longuement pour supprimer">
             <View style={{ flex: 1 }}>
               <Text style={[typo.label as object, { color: colors.text }]} numberOfLines={1}>
                 {item.title}
@@ -121,8 +124,8 @@ export default function HistoryScreen() {
               ) : null}
               <Text style={[styles.date, { color: colors.textFaint }]}>{formatDate(item.updatedAt)}</Text>
             </View>
-            <Pressable onPress={() => confirmDelete(item)} hitSlop={10} style={styles.delete}>
-              <Text style={{ color: colors.textFaint, fontSize: 18 }}>✕</Text>
+            <Pressable onPress={() => confirmDelete(item)} hitSlop={10} style={styles.delete} accessibilityRole="button" accessibilityLabel="Supprimer la conversation">
+              <Text style={{ color: colors.textFaint, fontSize: 18 }} accessibilityElementsHidden importantForAccessibility="no">✕</Text>
             </Pressable>
           </Pressable>
         )}

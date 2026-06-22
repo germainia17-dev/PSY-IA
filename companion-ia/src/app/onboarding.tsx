@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withSpring,
@@ -48,8 +49,22 @@ export default function OnboardingScreen() {
   const subY = useSharedValue(10)
   const contentOp = useSharedValue(0)
   const contentY = useSharedValue(16)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    // Reduced-motion : pas de séquence d'apparition de ~2 s — tout est posé
+    // immédiatement, l'écran est utilisable sans attendre.
+    if (reduced) {
+      orbScale.value = 1
+      titleOp.value = 1
+      titleY.value = 0
+      subOp.value = 1
+      subY.value = 0
+      contentOp.value = 1
+      contentY.value = 0
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      return
+    }
     orbScale.value = withDelay(300, withSpring(1, { damping: 14, stiffness: 110, mass: 1.2 }))
     const t = setTimeout(() => {
       if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -63,7 +78,7 @@ export default function OnboardingScreen() {
     contentY.value = withDelay(1900, withSpring(0, SPRING.soft))
 
     return () => clearTimeout(t)
-  }, [step])
+  }, [step, reduced])
 
   const orbStyle = useAnimatedStyle(() => ({ transform: [{ scale: orbScale.value }] }))
   const titleStyle = useAnimatedStyle(() => ({
@@ -238,8 +253,9 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   title: {
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Fraunces_600SemiBold', // voix du compagnon (serif display)
     fontSize: 34,
+    lineHeight: 40,
     letterSpacing: -0.5,
     textAlign: 'center',
     marginTop: 32,

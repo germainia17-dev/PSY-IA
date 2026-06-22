@@ -140,11 +140,14 @@ export default function SessionsScreen() {
               <Pressable
                 key={w.id}
                 onPress={() => toggleDay(w.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={w.short}
                 style={[
                   styles.dayCircle,
                   { borderColor: colors.border, backgroundColor: active ? colors.accent : colors.surface },
                 ]}>
-                <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontWeight: '600' }}>{w.short}</Text>
+                <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_600SemiBold' }}>{w.short}</Text>
               </Pressable>
             )
           })}
@@ -177,8 +180,8 @@ export default function SessionsScreen() {
                     {describeDays(s.days)}
                   </Text>
                 </View>
-                <Pressable onPress={() => remove(s.id)} hitSlop={10} style={styles.delete}>
-                  <Text style={{ color: colors.textFaint, fontSize: 18 }}>✕</Text>
+                <Pressable onPress={() => remove(s.id)} hitSlop={10} style={styles.delete} accessibilityRole="button" accessibilityLabel="Supprimer cette séance">
+                  <Text style={{ color: colors.textFaint, fontSize: 18 }} accessibilityElementsHidden importantForAccessibility="no">✕</Text>
                 </Pressable>
               </View>
             ))}
@@ -203,11 +206,14 @@ function Chip({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
       style={[
         styles.chip,
         { backgroundColor: active ? colors.accent : colors.surface, borderColor: colors.border },
       ]}>
-      <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontWeight: '600', fontSize: 15 }}>{label}</Text>
+      <Text style={{ color: active ? colors.accentTx : colors.textMuted, fontFamily: 'Inter_600SemiBold', fontSize: 15 }}>{label}</Text>
     </Pressable>
   )
 }
@@ -222,7 +228,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  sectionLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, marginTop: 8 },
+  sectionLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8, marginTop: 8 },
   pickerRow: { marginHorizontal: -20 },
   pills: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, flexWrap: 'wrap' },
   chip: {

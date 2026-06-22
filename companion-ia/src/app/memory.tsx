@@ -74,8 +74,8 @@ export default function MemoryScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={[styles.dot, { backgroundColor: colors.accent }]} />
             <Text style={[typo.message as object, { color: colors.text, flex: 1 }]}>{item.text}</Text>
-            <Pressable onPress={() => remove(item.id)} hitSlop={10} style={styles.delete}>
-              <Text style={{ color: colors.textFaint, fontSize: 16 }}>✕</Text>
+            <Pressable onPress={() => remove(item.id)} hitSlop={10} style={styles.delete} accessibilityRole="button" accessibilityLabel="Oublier ce souvenir">
+              <Text style={{ color: colors.textFaint, fontSize: 16 }} accessibilityElementsHidden importantForAccessibility="no">✕</Text>
             </Pressable>
           </View>
         )}

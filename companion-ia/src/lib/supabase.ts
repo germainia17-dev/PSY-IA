@@ -23,5 +23,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: Platform.OS === 'web',
+    // OBLIGATOIRE pour le flux deep-link natif : on échange un `?code=` via
+    // exchangeCodeForSession(). Sans 'pkce' (défaut = 'implicit'), aucun
+    // code_verifier n'est stocké et Supabase renvoie `#access_token=...` —
+    // l'échange échoue en silence et l'utilisateur reste bloqué après login
+    // Google OU magic link email (aucune session créée). Bug corrigé 2026-06-23.
+    flowType: 'pkce',
   },
 })

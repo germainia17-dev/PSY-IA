@@ -1,9 +1,9 @@
-// Design system Companion — refonte "warm soft v2" (19 juin 2026).
+// Design system Companion — identité "lampe de chevet" V4 (22 juin 2026).
 //
-// Philosophie : « lampe de chevet / papier crème ». Le compagnon émotionnel
-// garde la même âme partout, comme une lumière douce qui ne change pas selon
-// l'heure. On impose donc le warm clair quel que soit `useColorScheme`
-// (`palettes.dark` === `palettes.light`).
+// Philosophie : « lampe de chevet, pour de vrai ». Le défaut de marque est la
+// pénombre (`dusk`) — l'orbe est l'unique source de lumière, l'accent ambre est
+// sa chaleur. Le crème (`warm`) reste disponible comme mode "Clair" (jour). Les
+// deux sont gratuits ; on n'impose plus le clair selon `useColorScheme`.
 //
 // Vocabulaire : compagnon, soutien, écoute, espace personnel — jamais de
 // vocabulaire médical (patient, thérapie, dossier clinique).
@@ -28,6 +28,12 @@ export type Palette = {
   error: string
   success: string
   shadow: string // Ombre portée — sert aux élévations (Sheet, knob, carte mise en avant)
+  scrim: string // Voile derrière modale/sheet — isole le premier plan (40-60% selon thème)
+  gradientHero: readonly [string, string, string] // Dégradé hero (paywall) — rampe d'accent
+  gradientProCta: readonly [string, string] // Dégradé bouton Pro — accent → ton profond
+  chartMood: string // Courbe humeur
+  chartStress: string // Courbe stress
+  chartEngagement: string // Courbe engagement
 }
 
 // Palette "warm soft v2" — crème papier + terracotta. AAA sur le fond crème.
@@ -51,40 +57,56 @@ export const warm: Palette = {
   error: '#A8331F',
   success: '#3A6B3D',
   shadow: '#1A0A03',
+  scrim: 'rgba(26, 10, 3, 0.45)',
+  gradientHero: ['#E8B8A0', '#D9956B', '#C77A4A'],
+  gradientProCta: ['#C77A4A', '#8B4A1E'],
+  chartMood: '#C77A4A',
+  chartStress: '#C0603A',
+  chartEngagement: '#5E7F5A',
 }
 
-// L'app impose le warm — la palette "sombre" est identique à la claire
-// pour préserver l'atmosphère "lampe de chevet" en toutes circonstances.
-export const palettes: { light: Palette; dark: Palette } = {
-  light: warm,
-  dark: warm,
-}
+// Le défaut de marque est la pénombre (`dusk`). `palettes.dark` la sert, et
+// `palettes.light` sert le crème (mode "Clair") — fallback hors ThemeProvider.
+// (défini après `dusk` ci-dessous)
 
 // ── Thèmes (fonctionnalité Pro) ───────────────────────────────
 // Chaque thème garde la même structure de tokens que `warm` (= "cream"), pour
 // que tous les écrans changent d'ambiance sans changer de mise en page.
 
-// Nuit douce — lampe de chevet éteinte, fond plum profond, texte crème.
-export const nuit: Palette = {
-  bg: '#1E1A24',
-  surface: '#2A2434',
-  surfaceHigh: '#362E44',
+// Dusk — DÉFAUT DE MARQUE. Pénombre chaude, l'orbe est l'unique lumière,
+// texte crème doux (jamais blanc pur), accent ambre. Contrastes vérifiés ≥4.5:1.
+export const dusk: Palette = {
+  bg: '#1B1620',
+  surface: '#241C24',
+  surfaceHigh: '#2E2630',
   surfaceInverse: '#FFFFFF',
   accent: '#E0A45C',
   accentTx: '#1A1018',
-  accentSoft: '#4A3F58',
-  accentGlow: 'rgba(224, 164, 92, 0.20)',
-  text: '#F2EAF2',
-  textMuted: '#B7A9C2',
-  textFaint: '#8A7E97',
-  border: '#3A3247',
+  accentSoft: '#463A4A',
+  accentGlow: 'rgba(224, 164, 92, 0.24)',
+  text: '#ECE3DC', // crème doux, jamais #FFFFFF
+  textMuted: '#B9ADB6',
+  textFaint: '#938793',
+  border: '#3A3340',
   bubbleUser: '#E0A45C',
   bubbleUserTx: '#1A1018',
-  bubbleAsst: '#2A2434',
-  bubbleAsstTx: '#F2EAF2',
+  bubbleAsst: '#241C24',
+  bubbleAsstTx: '#ECE3DC',
   error: '#E5736B',
   success: '#7FB585',
   shadow: '#000000',
+  scrim: 'rgba(0, 0, 0, 0.58)',
+  gradientHero: ['#F0C48C', '#E8B26E', '#E0A45C'],
+  gradientProCta: ['#E0A45C', '#9C6B2E'],
+  chartMood: '#E0A45C',
+  chartStress: '#E5876B',
+  chartEngagement: '#7FB585',
+}
+
+// Fallback hors ThemeProvider : Clair = crème, Sombre = dusk (= défaut de marque).
+export const palettes: { light: Palette; dark: Palette } = {
+  light: warm,
+  dark: dusk,
 }
 
 // Forêt — verts profonds et apaisants sur fond sauge clair.
@@ -108,6 +130,12 @@ export const foret: Palette = {
   error: '#A8331F',
   success: '#3A6B3D',
   shadow: '#14210F',
+  scrim: 'rgba(20, 33, 15, 0.45)',
+  gradientHero: ['#8FB389', '#6E9A67', '#4F7A4A'],
+  gradientProCta: ['#4F7A4A', '#2E4A2B'],
+  chartMood: '#4F7A4A',
+  chartStress: '#C0603A',
+  chartEngagement: '#3A6B3D',
 }
 
 // Aurore — dégradés pastel du petit matin, rose poudré.
@@ -131,19 +159,25 @@ export const aurore: Palette = {
   error: '#A8331F',
   success: '#3A6B3D',
   shadow: '#2A0A14',
+  scrim: 'rgba(42, 10, 20, 0.45)',
+  gradientHero: ['#E0A6B5', '#CC7E92', '#B85C72'],
+  gradientProCta: ['#B85C72', '#7E3A4C'],
+  chartMood: '#B85C72',
+  chartStress: '#C0603A',
+  chartEngagement: '#5E7F5A',
 }
 
-export type ThemeId = 'cream' | 'nuit' | 'foret' | 'aurore'
+export type ThemeId = 'dusk' | 'cream' | 'foret' | 'aurore'
 
-// Source unique : id de thème → palette. `cream` === `warm` (défaut).
+// Source unique : id de thème → palette. `dusk` = défaut de marque ; `cream` === `warm`.
 export const themes: Record<ThemeId, Palette> = {
+  dusk,
   cream: warm,
-  nuit,
   foret,
   aurore,
 }
 
-export const DEFAULT_THEME_ID: ThemeId = 'cream'
+export const DEFAULT_THEME_ID: ThemeId = 'dusk'
 
 export function isThemeId(value: unknown): value is ThemeId {
   return typeof value === 'string' && value in themes
@@ -192,9 +226,11 @@ export function withAccent(base: Palette, accentId: AccentId): Palette {
   }
 }
 
-// Police Inter — cœur visuel. Chaque graisse = un fontFamily dédié
-// (convention @expo-google-fonts), donc on ne s'appuie pas sur fontWeight.
+// Deux familles. Fraunces (serif humaniste) = "voix" du compagnon : `display`
+// pour le nom, les salutations, les titres héros. Inter = corps + UI. Chaque
+// graisse = un fontFamily dédié (convention @expo-google-fonts), pas de fontWeight.
 export const type = {
+  display: { fontFamily: 'Fraunces_600SemiBold', fontSize: 30, lineHeight: 36, letterSpacing: -0.5 },
   title: { fontFamily: 'Inter_700Bold', fontSize: 28, lineHeight: 34, letterSpacing: -0.4 },
   subtitle: { fontFamily: 'Inter_500Medium', fontSize: 17, lineHeight: 24, letterSpacing: -0.1 },
   message: { fontFamily: 'Inter_400Regular', fontSize: 16, lineHeight: 24 },
@@ -202,3 +238,26 @@ export const type = {
   caption: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 18 },
   button: { fontFamily: 'Inter_600SemiBold', fontSize: 16, lineHeight: 20 },
 } as const
+
+// ── Espacement ────────────────────────────────────────────────
+// Échelle 4/8 — source unique. Remplace le `Spacing` résiduel du template
+// Expo (`constants/theme.ts`) et les nombres magiques dispersés.
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+} as const
+
+// Couleurs des confettis (célébration passage Pro). Festives, volontairement
+// hors palette — un seul moment, un seul endroit.
+export const CONFETTI_COLORS = [
+  '#FF5E5B',
+  '#FFD93D',
+  '#6BCB77',
+  '#4D96FF',
+  '#B983FF',
+  '#FF9F45',
+] as const

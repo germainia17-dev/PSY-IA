@@ -17,12 +17,14 @@ import { type as typo } from '../constants/type'
 import { useTheme } from '../hooks/use-theme'
 import { logEvent } from '../lib/events'
 
+// Bénéfices (côté utilisateur), pas une liste de features. Uniquement ce qui est
+// réellement réservé au Pro : messages illimités, ton, thèmes décoratifs, parcours.
+// (Le logo et le mode Nuit sont gratuits — ne pas les vendre ici.)
 const FEATURES = [
-  'Conversations illimitées chaque jour',
-  'Thèmes visuels exclusifs (Nuit, Forêt, Aurore)',
-  'Ton de réponse personnalisé',
-  'Logo personnalisé dans l\'interface',
-  'Suivi de santé et évolution de l\'état psychologique',
+  'Parle autant que tu veux — aucune limite quotidienne',
+  'Le ton qui t\'apaise : doux, direct, motivant ou posé',
+  'Ambiances visuelles Forêt et Aurore',
+  'Retrace ton parcours : ton humeur au fil des semaines',
 ]
 
 export default function PaywallScreen() {
@@ -53,7 +55,7 @@ export default function PaywallScreen() {
 
         {/* Hero */}
         <LinearGradient
-          colors={['#E8B8A0', '#D9956B', '#C77A4A']}
+          colors={[...colors.gradientHero]}
           start={{ x: 0.2, y: 0 }}
           end={{ x: 0.8, y: 1 }}
           style={styles.hero}>
@@ -63,7 +65,7 @@ export default function PaywallScreen() {
         </LinearGradient>
 
         {/* Feature list */}
-        <View style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: colors.shadow }]}>
           {FEATURES.map((f, i) => (
             <View key={i} style={[styles.featureItem, i < FEATURES.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
               <View style={[styles.featureCheck, { backgroundColor: colors.accentSoft }]}>
@@ -74,6 +76,13 @@ export default function PaywallScreen() {
           ))}
         </View>
 
+        {/* Réassurance honnête : le différenciateur réel, c'est la vie privée.
+            TODO preuve sociale — insérer ici de VRAIS témoignages / une note
+            moyenne quand on en aura. Ne jamais inventer de chiffres. */}
+        <Text style={[typo.caption as object, { color: colors.textMuted, textAlign: 'center', marginHorizontal: 24, marginTop: 16, lineHeight: 18 }]}>
+          Sans compte. Tes conversations restent privées, sur ton téléphone.
+        </Text>
+
         {/* Pricing cards */}
         <View style={styles.cards}>
           {PRO_OFFERS.map((offer) => (
@@ -81,10 +90,12 @@ export default function PaywallScreen() {
               key={offer.interval}
               activeOpacity={0.85}
               onPress={() => openPro(offer.interval)}
+              accessibilityRole="button"
+              accessibilityLabel={`${offer.label} : ${offer.price}${offer.period}. Continuer sans limite`}
               style={[
                 styles.card,
                 { backgroundColor: offer.highlight ? colors.accentSoft : colors.surface, borderColor: colors.border },
-                offer.highlight && styles.cardHighlight,
+                offer.highlight && [styles.cardHighlight, { shadowColor: colors.accent }],
               ]}>
               {offer.sublabel ? (
                 <View style={[
@@ -121,15 +132,15 @@ export default function PaywallScreen() {
 
               {offer.highlight ? (
                 <LinearGradient
-                  colors={[colors.accent, '#8B4A1E']}
+                  colors={[...colors.gradientProCta]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.btnGradient}>
-                  <Text style={[typo.button as object, { color: 'white' }]}>Choisir</Text>
+                  <Text style={[typo.button as object, { color: 'white' }]}>Continuer sans limite</Text>
                 </LinearGradient>
               ) : (
                 <View style={[styles.btn, { backgroundColor: colors.surfaceHigh }]}>
-                  <Text style={[typo.button as object, { color: colors.text }]}>Choisir</Text>
+                  <Text style={[typo.button as object, { color: colors.text }]}>Continuer sans limite</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -162,8 +173,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   heroTitle: {
-    fontSize: 26,
-    fontFamily: 'Inter_700Bold',
+    fontSize: 28,
+    fontFamily: 'Fraunces_600SemiBold', // voix du compagnon (serif display)
     color: 'white',
     letterSpacing: -0.4,
     textAlign: 'center',
@@ -182,7 +193,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingHorizontal: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    shadowColor: '#1A0A03',
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -211,7 +221,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardHighlight: {
-    shadowColor: '#C77A4A',
     shadowOpacity: 0.2,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },

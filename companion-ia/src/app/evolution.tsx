@@ -212,6 +212,9 @@ export default function EvolutionScreen() {
             <Pressable
               key={p}
               onPress={() => setPeriod(p)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: period === p }}
+              accessibilityLabel={p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Année'}
               style={({ pressed }) => [
                 styles.periodPill,
                 period === p
@@ -264,21 +267,21 @@ export default function EvolutionScreen() {
               title="Humeur générale"
               caption="Déduite de tes échanges et de ton humeur du jour. Plus haut = mieux."
               series={moodSeries}
-              color={colors.accent}
+              color={colors.chartMood}
               colors={colors}
             />
             <GraphCard
               title="Stress"
               caption="Niveau de tension perçu dans tes conversations. Plus bas = plus apaisé."
               series={stressSeries}
-              color="#E0876A"
+              color={colors.chartStress}
               colors={colors}
             />
             <GraphCard
               title="Capacité à parler"
               caption="Ton engagement au fil des jours. Plus tu parles, plus je peux t'aider."
               series={engagementSeries}
-              color="#7FA88B"
+              color={colors.chartEngagement}
               colors={colors}
             />
           </>
